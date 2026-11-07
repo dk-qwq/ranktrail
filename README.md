@@ -1,5 +1,7 @@
 # 题迹 RankTrail
 
+[![GitHub Pages](https://github.com/dk-qwq/ranktrail/actions/workflows/deploy.yml/badge.svg)](https://github.com/dk-qwq/ranktrail/actions/workflows/deploy.yml)
+
 **面向算法竞赛训练的榜单回放工具，由 [dk_qwq](https://github.com/dk-qwq) 维护。**
 
 本项目基于 **[Silverwolfnya](https://github.com/Silverwolfnya)** 的 **[雾榜 FogBoard](https://github.com/Silverwolfnya/fogboard)** 修改而来，保留并继续使用上游的榜单解析、回放与赛制模拟能力。感谢原作者的开源工作。
@@ -8,7 +10,7 @@
 
 [在线使用](https://dk-qwq.github.io/ranktrail/) · [源代码](https://github.com/dk-qwq/ranktrail) · [上游项目](https://github.com/Silverwolfnya/fogboard)
 
-![赛时榜单](docs/screenshots/26-live-layout.png)
+![赛时榜单](docs/screenshots/31-ranktrail-live.png)
 
 ![封榜逐题榜单](docs/screenshots/27-frozen-layout.png)
 
@@ -122,7 +124,7 @@ xlsx 和多数复制榜单只有每题的最终聚合结果，没有每次提交
 
 ## GitHub Pages 自动部署
 
-部署目标为 **<https://dk-qwq.github.io/ranktrail/>**。工作流已配置，首次发布需要在维护者账号下创建仓库并开启 GitHub Pages 的 GitHub Actions 来源；启用后由工作流构建和部署。
+在线地址为 **<https://dk-qwq.github.io/ranktrail/>**，已通过 GitHub Pages 发布。后续向 `main` 推送更新会自动检查、构建并重新部署。迁移到其他仓库时，首次需要开启 GitHub Pages 的 GitHub Actions 来源。
 
 - 向默认分支推送代码会触发检查、构建和 Pages 发布。
 - 也可以在 GitHub 的 **Actions → Validate and deploy RankTrail → Run workflow** 手动触发。
