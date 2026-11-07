@@ -1,0 +1,17 @@
+RankTrail / 题迹
+
+Based on FogBoard / 雾榜:
+https://github.com/Silverwolfnya/fogboard
+Original author: Silverwolfnya
+Copyright (c) 2026 FogBoard contributors
+
+This fork is maintained by dk_qwq:
+https://github.com/dk-qwq/ranktrail
+Local modifications Copyright (c) 2026 dk_qwq
+
+Modifications include project branding, a unified light interface, revealed
+problem columns and anonymous live cells, the full per-problem frozen layout,
+medal colors, responsive layout, virtual-team freeze behavior, and GitHub
+Pages deployment automation.
+
+The original copyright notice and MIT permission text are retained in LICENSE.

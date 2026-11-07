@@ -133,7 +133,7 @@ export interface Settings {
   /** 我的队伍：它的格子永远可见、结果实时更新 */
   selfTeamId: string | null
   selfSeesLive: boolean
-  /** 实时奖牌线：前三档按名次百分比（累积），铁牌不渲染 */
+  /** 实时奖牌线：前三档按名次百分比（累积），无奖用浅灰底色 */
   medalEnabled: boolean
   /** 金牌线：前 N% 是金 */
   medalGoldPct: number
@@ -236,7 +236,7 @@ export interface RowView {
    * 有逐条提交时，未通过的题会随错误次数长出来；没有时刻的排在最后。
    */
   entries: EntryView[]
-  /** 与题目列一一对应（仅队伍抽屉用，受解锁状态约束） */
+  /** 与原始题序一一对应（队伍抽屉与主榜逐题列使用，受解锁状态约束） */
   cells: CellView[]
 }
 

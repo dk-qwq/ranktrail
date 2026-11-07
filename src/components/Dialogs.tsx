@@ -7,6 +7,7 @@ import { sourceLabel } from '../lib/model/contest'
 import { QOJ_SNIPPET } from '../lib/parse/qoj'
 import { formatAcceptTime, formatClock, formatPenalty, formatPenaltyFull } from '../lib/format'
 import { cx, Icon, Modal, Switch } from './ui'
+import { BRAND } from '../lib/brand'
 
 /* ------------------------------------------------------------------ */
 /* 设置                                                                */
@@ -178,12 +179,12 @@ export function SettingsDialog({
 
       <div className="setting-row">
         <div className="setting-text">
-          <span className="setting-title">在名次前标金牌 / 银牌 / 铜牌</span>
+          <span className="setting-title">用名次底色标金牌 / 银牌 / 铜牌</span>
           <span className="setting-desc">
             当前口径 {teamCount} 队：
-            <strong style={{ color: '#f0cf7f' }}> 金 {medalCuts.gold}</strong>
-            <strong style={{ color: '#cdd6df' }}> · 银 {medalCuts.silver}</strong>
-            <strong style={{ color: '#cf9f76' }}> · 铜 {medalCuts.bronze}</strong>
+            <strong style={{ color: 'var(--medal-gold)' }}> 金 {medalCuts.gold}</strong>
+            <strong style={{ color: 'var(--medal-silver)' }}> · 银 {medalCuts.silver}</strong>
+            <strong style={{ color: 'var(--medal-bronze)' }}> · 铜 {medalCuts.bronze}</strong>
             。名次实时变化，线也跟着走；一题没过的算铁牌，不标。
           </span>
         </div>
@@ -545,20 +546,21 @@ function SheetRow({
 
 export function RuleDialog({ onClose }: { onClose: () => void }) {
   return (
-    <Modal title="这个榜单在模拟什么" onClose={onClose} wide>
+    <Modal title={BRAND.nameChinese + ' · 规则与来源'} onClose={onClose} wide>
+      <p className="source-credit">{BRAND.nameChinese} {BRAND.name} 由 {BRAND.owner} 维护，基于 <a href={BRAND.upstream.url} target="_blank" rel="noreferrer">{BRAND.upstream.author} 的 {BRAND.upstream.name}</a>，沿用 MIT 开源协议。</p>
       <ol className="rules">
         <li>
-          <strong>主榜只有名次、通过数、罚时，加上"第 1 次、第 2 次…通过"的时刻。</strong>
+          <strong>赛时主榜将已揭题固定在左侧，其余提交仍按时间顺序匿名排列。</strong>
           锁定题目被通过也会计入 —— 通过数、罚时、第几次通过照常更新；但你不知道那是哪一道题。
         </li>
         <li>
           <strong>题目通过数达到阈值，右栏的题卡才亮。</strong>
           固定阈值与百分比阈值取较小者：<span className="formula">k = min(50, ⌈20% × N⌉)</span>
-          ，亮起的时刻 = 这道题第 k 个 AC 发生的时刻；点开能看到通过名单。
+          ，亮起的时刻 = 这道题第 k 个 AC 发生的时刻；对应题目会移到主榜左侧，点开题卡能看到通过名单。
         </li>
         <li>
           <strong>封榜（默认 4:00）时所有题卡一起亮，但数据冻结。</strong>
-          封榜后不再能看到新的通过，直到比赛结束或手动解封。
+          主榜切换为按 A、B、C…对齐的完整逐题布局。封榜后不再能看到新的通过，直到比赛结束或手动解封。
         </li>
         <li>
           <strong>终榜。</strong>

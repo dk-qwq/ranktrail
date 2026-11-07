@@ -38,6 +38,7 @@ import {
   TeamDrawer,
 } from './components/Dialogs'
 import { usePlayback } from './state/usePlayback'
+import { BRAND } from './lib/brand'
 
 type DialogName = 'import' | 'settings' | 'help' | 'diagnostics' | 'team' | null
 
@@ -59,6 +60,25 @@ export default function App() {
   const [query, setQuery] = useState('')
   const [toast, setToast] = useState<string | null>(null)
   const [railOpen, setRailOpen] = useState(true)
+  const [compactRail, setCompactRail] = useState(() => window.matchMedia('(max-width: 1280px)').matches)
+  const [railOverlayOpen, setRailOverlayOpen] = useState(false)
+  const railVisible = compactRail ? railOverlayOpen : railOpen
+
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 1280px)')
+    const update = () => { setCompactRail(media.matches); setRailOverlayOpen(false) }
+    media.addEventListener('change', update)
+    return () => media.removeEventListener('change', update)
+  }, [])
+
+  useEffect(() => {
+    if (!railOverlayOpen) return
+    const close = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !dialog && !selectedTeam) setRailOverlayOpen(false)
+    }
+    window.addEventListener('keydown', close)
+    return () => window.removeEventListener('keydown', close)
+  }, [railOverlayOpen, dialog, selectedTeam])
   const [manualTeam, setManualTeam] = useState<ManualTeam | null>(null)
   const [manualPick, setManualPick] = useState<string | null>(null)
 
@@ -426,12 +446,12 @@ export default function App() {
     <div className={cx('app', !snapshot && 'empty-shell')}>
       <header className="topbar">
         <div className="brand">
-          <span className="brand-name">雾榜</span>
-          <span className="brand-latin">FOG BOARD</span>
+          <span className="brand-name">{BRAND.nameChinese}</span>
+          <span className="brand-latin">{BRAND.nameLatin}</span>
         </div>
         <div className="topbar-sep" />
         <div className="topbar-context">
-          <span className="context-tag">CCPC 2026 · 新赛制</span>
+          <span className="context-tag">by {BRAND.owner}</span>
           <span className="context-title">
             {contest
               ? `${[...new Set([contest.title, contest.sheetName].filter(Boolean))].join(' · ')} · ${
@@ -460,8 +480,12 @@ export default function App() {
           </button>
           <button
             className="ghost-btn"
-            data-active={railOpen}
-            onClick={() => setRailOpen((v) => !v)}
+            data-active={railVisible}
+            aria-expanded={railVisible}
+            aria-controls="contest-panel"
+            aria-label="面板"
+            disabled={!snapshot}
+            onClick={() => compactRail ? setRailOverlayOpen((v) => !v) : setRailOpen((v) => !v)}
             title="展开 / 收起右栏"
           >
             <Icon name="panel" />
@@ -494,7 +518,7 @@ export default function App() {
             onSpeed={playback.setSpeed}
           />
 
-          <main className={cx('stage', railOpen && 'has-rail', snapshot.phase === 'frozen' && 'is-frozen')}>
+          <main className={cx('stage', railVisible && 'has-rail', compactRail && 'rail-as-overlay', snapshot.phase === 'frozen' && 'is-frozen')}>
             <div className="stage-main">
               {snapshot.phase === 'frozen' ? (
                 <div className="freeze-banner" role="status">
@@ -518,18 +542,14 @@ export default function App() {
               <div className="board-wrap">
                 <BoardTable
                   rows={visibleRows}
-                  slotCount={Math.max(
-                    15,
-                    snapshot.problems.length,
-                    ...snapshot.rows.map((r) => r.entries.length),
-                  )}
-                  problemCount={snapshot.problems.length}
+                  snapshot={snapshot}
                   minutePrecision={isMinutePrecision(contest!.source)}
                   onSelectTeam={setSelectedTeam}
                 />
               </div>
             </div>
-            {railOpen ? (
+            {compactRail && railVisible ? <button className="rail-overlay-scrim" aria-label="关闭侧栏" onClick={() => setRailOverlayOpen(false)} /> : null}
+            {railVisible ? (
               <Rail
                 contest={contest!}
                 index={index}
@@ -651,11 +671,11 @@ function EmptyState({
     <div className="empty">
       <div className="empty-inner">
         <div className="empty-lead">
-          <p className="eyebrow">China Collegiate Programming Contest · 2026</p>
-          <h1>雾榜</h1>
+          <p className="eyebrow">{BRAND.nameLatin} · Virtual Contest Replay</p>
+          <h1>{BRAND.nameChinese}</h1>
           <p className="lede">
-            赛时榜单只告诉你每支队伍<em>过了几题</em>、<em>罚时多少</em>。
-            哪支队过了哪一道题，要等这道题够热，或者封榜的那一刻，才会亮起来。
+            沿着时间轴，重走比赛中的每一次提交。
+            赛时<em>匿名追榜</em>，随着题目揭开看清战局，再到封榜、终榜，让 VP 也有现场感。
           </p>
           <ol className="rule-brief">
             <li>
@@ -740,6 +760,10 @@ function EmptyState({
             <button className="qoj-link" onClick={onOpenQoj}>
               榜单在 QOJ 上？用「QOJ 导入」→
             </button>
+          </p>
+          <p className="source-credit">
+            <span>由 {BRAND.owner} 维护 · <a href={BRAND.repoUrl} target="_blank" rel="noreferrer">GitHub</a></span>
+            <span>基于 <a href={BRAND.upstream.url} target="_blank" rel="noreferrer">{BRAND.upstream.author} / {BRAND.upstream.name}</a> 改造</span>
           </p>
         </div>
       </div>

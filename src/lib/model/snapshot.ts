@@ -45,14 +45,16 @@ export function buildSnapshot(opts: SnapshotOptions): Snapshot {
   const roster = settings.scope === 'official' ? index.officialTeams : index.fieldTeams
   const teams = index.virtualTeams.length ? [...roster, ...index.virtualTeams] : roster
 
-  // 每题截至 dataT 的提交数：已通过题目的提交按 attempts 精确累加；
-  // 未通过题目的错误提交在导出文件里没有时刻，只在解封 / 终榜后计入（其余挂在 submittedPending 上）
+  // 有逐条提交时只统计 dataT 之前的流水；聚合数据按已发生的 AC 计入 attempts。
+  // 没有时刻的最终错误次数只在解封 / 终榜后计入，其余挂在 submittedPending 上。
   const submitted = plan.problems.map((p) => {
     let n = 0
     for (const team of roster) {
       const cell = team.cells[p.letter]
       if (!cell) continue
-      if (cell.ac && cell.acceptSec != null) {
+      if (cell.submits) {
+        n += cell.submits.filter((s) => s.sec <= dataT).length
+      } else if (cell.ac && cell.acceptSec != null) {
         if (cell.acceptSec <= dataT) n += cell.attempts
       } else if (!cell.ac && revealed) {
         n += cell.attempts
@@ -66,13 +68,13 @@ export function buildSnapshot(opts: SnapshotOptions): Snapshot {
     let n = 0
     for (const team of roster) {
       const cell = team.cells[p.letter]
-      if (cell && !cell.ac) n += cell.attempts
+      if (cell && !cell.ac && !cell.submits) n += cell.attempts
     }
     return n
   })
 
   const problems: ProblemView[] = plan.problems.map((p, i) => {
-    const unlocked = settings.showFullInfo || p.unlockSec <= dataT
+    const unlocked = revealed || p.unlockSec <= dataT
     const accepted = upperBound(p.acceptedSecs, dataT)
     const justUnlocked =
       unlocked && Number.isFinite(p.unlockSec) && dataT >= p.unlockSec && dataT - p.unlockSec <= 180
@@ -153,7 +155,10 @@ export function buildSnapshot(opts: SnapshotOptions): Snapshot {
         }
       }
 
-      if (revealed && cell && !cell.ac && cell.attempts > 0) {
+      if (cell?.submits) {
+        const wrongs = cell.submits.filter((s) => s.sec <= tTeam && !s.ac).length
+        if (wrongs > 0) return { kind: 'rejected', attempts: wrongs, lockedColumn: !columnUnlocked }
+      } else if (revealed && cell && !cell.ac && cell.attempts > 0) {
         return { kind: 'rejected', attempts: cell.attempts, lockedColumn: !columnUnlocked }
       }
 
@@ -162,19 +167,18 @@ export function buildSnapshot(opts: SnapshotOptions): Snapshot {
 
     // 主榜格子：一队一题一格，按"第一次交这道题的时刻"排序。
     // 有逐条提交（board.xcpcio）时，未通过的 −n 会随错误次数长出来；
-    // 只有聚合数据（xlsx）时，未通过的题没有时刻，排到最后且要等解锁后才亮。
+    // 只有聚合数据（xlsx）时，未通过的题没有时刻，只有解封后才给出最终错误次数。
     const rowEntries: EntryView[] = []
     for (const cell of Object.values(team.cells)) {
       const label = unlockedLetter.has(cell.letter) ? cell.letter : undefined
       const submits = cell.submits
 
-      if (cell.ac && cell.acceptSec != null) {
-        if (cell.acceptSec > tTeam) continue
+      if (cell.ac && cell.acceptSec != null && cell.acceptSec <= tTeam) {
         const upto = submits ? submits.filter((s) => s.sec <= tTeam) : null
         rowEntries.push({
           kind: 'ac',
           attempts: upto ? Math.max(1, upto.length) : cell.attempts,
-          firstSec: submits ? submits[0].sec : cell.acceptSec,
+          firstSec: submits?.[0]?.sec ?? cell.acceptSec,
           sec: cell.acceptSec,
           letter: label,
           firstBlood: cell.firstBlood,
@@ -194,8 +198,8 @@ export function buildSnapshot(opts: SnapshotOptions): Snapshot {
           sec: wrong[wrong.length - 1].sec,
           letter: label,
         })
-      } else if (unlockedLetter.has(cell.letter) || isSelf) {
-        // 没有时刻：只能等这题解锁（或自己）才给出来
+      } else if (revealed && !cell.ac) {
+        // 没有时刻：解锁或设为自己的队伍都不能确定这些提交是否已经发生。
         rowEntries.push({ kind: 'fail', attempts: cell.attempts, firstSec: Infinity, letter: label })
       }
     }

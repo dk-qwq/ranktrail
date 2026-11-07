@@ -1,0 +1,130 @@
+/* Fit the complete problem row to desktop space; keep small-screen scrolling usable. */
+.app { grid-template-rows: 48px auto minmax(0, 1fr) auto; }
+.app.empty-shell { grid-template-rows: 48px minmax(0, 1fr); }
+.topbar { gap: 12px; padding-inline: 16px; }
+.topbar-actions { gap: 2px; }
+.ghost-btn { padding-inline: 8px; }
+.playbar {
+  display: grid;
+  grid-template-columns: auto auto auto minmax(120px, 1fr) auto;
+  gap: 12px;
+  padding: 9px 16px;
+}
+.clock-block { min-width: 0; gap: 6px; }
+.clock { font-size: 28px; }
+.clock-total { font-size: 11px; }
+.transport { gap: 0; }
+.icon-btn { width: 28px; height: 28px; }
+.play-btn { width: 34px; height: 34px; margin-inline: 3px; }
+.segmented button { padding-inline: 7px; font-size: 11px; }
+.search-box { width: 100%; max-width: 260px; min-width: 0; }
+.playbar-right { flex-wrap: nowrap; gap: 6px; }
+.chip { padding-inline: 7px; letter-spacing: 0; font-size: 10px; }
+.stage.has-rail { grid-template-columns: minmax(0, 1fr) 260px; }
+.rail { display: flex; padding: 14px 12px 20px; gap: 18px; }
+.board-wrap { container: board-area / inline-size; scrollbar-gutter: stable; }
+.board-wrap:has(.board-problems) { padding: 10px 12px 16px; }
+.board.board-problems {
+  --board-rank: 72px;
+  --board-solved: 56px;
+  --board-penalty: 78px;
+  width: 100%;
+  min-width: max(760px, calc(206px + var(--problem-count, 13) * 44px));
+}
+.board.board-problems.has-second-times { min-width: max(800px, calc(206px + var(--problem-count, 13) * 50px)); }
+.board-problems col.col-rank { width: var(--board-rank); }
+.board-problems col.col-solved { width: var(--board-solved); }
+.board-problems col.col-penalty { width: var(--board-penalty); }
+.board-problems thead th { height: 46px; padding: 5px 2px; }
+.board-problems .h-slot .n { font-size: 15px; }
+.board-problems .h-slot .u { font-size: 9px; margin-top: 3px; }
+.board-problems .h-rank, .board-problems .h-solved, .board-problems .h-penalty { font-size: 12px; }
+.board-problems .score-team-info td { height: 34px; padding-top: 2px; }
+.board-problems .score-members { padding: 2px 7px 0; }
+.board-problems .member-line { height: 15px; gap: 4px; font-size: 10px; }
+.board-problems .member-line svg { width: 13px; height: 13px; }
+.board-problems .score-identity { padding: 2px 4px 0; }
+.board-problems .score-team-button { min-height: 30px; gap: 8px; padding: 1px 3px; }
+.board-problems .school-badge { width: 21px; height: 24px; font-size: 14px; }
+.board-problems .score-org { font-size: 16px; }
+.board-problems .score-team-name { min-height: 28px; padding-left: 8px; }
+.board-problems .score-team-name .team-name { font-size: 14px; }
+.board-problems .score-team-result td { height: 38px; padding: 2px 2px 5px; }
+.board-problems .rank-num { min-width: 52px; height: 30px; font-size: 17px; }
+.board-problems .c-solved .solved-num { font-size: 18px; }
+.board-problems .c-penalty { font-size: 18px; }
+.board-problems .tile, .board-problems .tile-fail, .board-problems .tile-empty { height: 30px; padding-inline: 5px; gap: 2px; }
+.board-problems .tile-main { min-width: 14px; min-height: 19px; padding-inline: 2px; font-size: 11px; }
+.board-problems .tile-time, .board-problems .tile-fail-time { font-size: 15px; }
+.board-problems .tile-empty { font-size: 17px; }
+.board-problems .tile-fb { font-size: 18px; }
+.board-problems.has-second-times .tile, .board-problems.has-second-times .tile-fail { padding-inline: 2px; gap: 1px; }
+.board-problems.has-second-times .tile-main { min-height: 10px; font-size: 9px; }
+.board-problems.has-second-times .tile-time, .board-problems.has-second-times .tile-fail-time { font-size: 11px; }
+.timeline { padding: 7px 16px 8px; }
+.tl-head { margin-bottom: 6px; }
+.tl-track { height: 16px; }
+.tl-cursor { top: -4px; bottom: -4px; }
+.tl-ticks { height: 14px; }
+.toast { bottom: 82px; }
+
+@container board-area (max-width: 1180px) {
+  .board-problems .tile, .board-problems .tile-fail { padding-inline: 4px; }
+  .board-problems .tile-time, .board-problems .tile-fail-time { font-size: 14px; }
+  .board-problems.has-second-times .tile-time, .board-problems.has-second-times .tile-fail-time { font-size: 10px; }
+}
+@container board-area (max-width: 1040px) {
+  .board-problems .tile, .board-problems .tile-fail { flex-direction: column; justify-content: center; gap: 1px; padding-inline: 2px; }
+  .board-problems .tile-main { min-height: 10px; font-size: 9px; }
+  .board-problems .tile-time, .board-problems .tile-fail-time { font-size: 12px; }
+  .board-problems.has-second-times .tile-time, .board-problems.has-second-times .tile-fail-time { font-size: 10px; }
+}
+@media (max-width: 1400px) {
+  .context-tag { display: none; }
+  .playbar { gap: 9px; }
+  .freeze-countdown { display: none; }
+}
+@media (max-width: 1280px) {
+  .stage.has-rail, .stage.rail-as-overlay { grid-template-columns: minmax(0, 1fr); }
+  .stage.rail-as-overlay .rail {
+    position: absolute;
+    inset: 0 0 0 auto;
+    z-index: 21;
+    width: min(300px, calc(100% - 24px));
+    box-shadow: -12px 0 40px #14294920;
+  }
+  .rail-overlay-scrim {
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    width: 100%;
+    height: 100%;
+    background: #172b4d36;
+    cursor: default;
+  }
+}
+@media (max-width: 980px) {
+  .playbar { display: flex; flex-wrap: wrap; gap: 8px 10px; padding: 8px 12px; }
+  .clock { font-size: 25px; }
+  .clock-total { font-size: 10px; }
+  .playbar-right { margin-left: auto; }
+  .segmented { order: 4; }
+  .search-box { order: 5; flex: 1; max-width: none; width: auto; }
+  .topbar { padding-inline: 12px; gap: 10px; }
+}
+@media (max-width: 560px) {
+  .topbar { padding-inline: 10px; gap: 8px; }
+  .brand-name { font-size: 17px; }
+  .ghost-btn { padding-inline: 6px; }
+  .clock { font-size: 24px; }
+  .clock-block { gap: 4px; }
+  .icon-btn { width: 25px; height: 27px; }
+  .play-btn { width: 31px; height: 31px; }
+  .problem-count { display: none; }
+  .playbar-right { gap: 4px; }
+  .chip { height: 23px; padding-inline: 5px; font-size: 9px; }
+  .segmented button { padding-inline: 6px; }
+  .board-wrap:has(.board-problems) { padding: 6px 16px 10px 6px; }
+  .timeline { padding-inline: 10px; }
+  .empty { padding: 28px 18px; }
+}

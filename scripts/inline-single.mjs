@@ -4,7 +4,7 @@ import { readFileSync, writeFileSync, readdirSync, rmSync, statSync } from 'node
 import { join } from 'node:path'
 
 const dir = 'dist-single'
-const out = join(dir, 'FogBoard.html')
+const out = join(dir, 'RankTrail.html')
 
 let html = readFileSync(join(dir, 'index.html'), 'utf8')
 
@@ -32,12 +32,15 @@ if (linkMatch) {
 const leftovers = [...html.matchAll(/(?:src|href)="\.\/assets\/[^"]+"/g)].map((m) => m[0])
 if (leftovers.length) throw new Error(`还有外链资源没内联：${leftovers.join(', ')}`)
 
+// 单文件分发时一并保留上游许可证与衍生项目说明。
+const notices = ['LICENSE', 'NOTICE'].map((file) => readFileSync(file, 'utf8').trim()).join('\n\n') + '\n\n' + readFileSync(join(dir, 'THIRD_PARTY_LICENSES.txt'), 'utf8')
+html = html.replace('<!doctype html>', '<!doctype html>\n<!--\n' + notices.replaceAll('--', '—') + '\n-->')
 writeFileSync(out, html, 'utf8')
 
 // 清掉已经内联的 assets，免得目录里留一堆重复文件
 rmSync(join(dir, 'assets'), { recursive: true, force: true })
 for (const file of readdirSync(dir)) {
-  if (file !== 'FogBoard.html') rmSync(join(dir, file), { recursive: true, force: true })
+  if (file !== 'RankTrail.html') rmSync(join(dir, file), { recursive: true, force: true })
 }
 
 const kb = statSync(out).size / 1024

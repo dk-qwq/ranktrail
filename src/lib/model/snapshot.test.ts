@@ -3,7 +3,8 @@ import { CHENGDU, QINHUANGDAO, loadIndex } from '../testing/fixtures'
 import { computeUnlocks } from '../rules/unlock'
 import { DEFAULT_SETTINGS } from '../rules/settings'
 import { buildSnapshot } from './snapshot'
-import type { Settings } from '../types'
+import type { CellResult, Settings } from '../types'
+import { buildIndex } from './contest'
 
 const min = (m: number) => m * 60
 
@@ -283,5 +284,95 @@ describe('快照：秦皇岛站', () => {
   it('首杀标记随解锁一起可见', () => {
     const j = s.problems.findIndex((p) => p.letter === 'J')
     expect(s.rows.some((r) => r.cells[j].firstBlood)).toBe(true)
+  })
+})
+
+describe('快照：逐条提交与聚合错误数据的时间边界', () => {
+  const cells: Record<string, CellResult> = {
+    A: { letter: 'A', ac: true, attempts: 4, acceptSec: 15000, submits: [
+      { sec: 700, ac: false }, { sec: 14000, ac: false },
+      { sec: 14500, ac: false }, { sec: 15000, ac: true },
+    ] },
+    B: { letter: 'B', ac: false, attempts: 3, submits: [
+      { sec: 600, ac: false }, { sec: 14400, ac: false }, { sec: 14700, ac: false },
+    ] },
+    C: { letter: 'C', ac: false, attempts: 5 },
+    D: { letter: 'D', ac: true, attempts: 1, acceptSec: 1000 },
+  }
+  const team = { ...index.teams[0], id: 'timed', cells }
+  const timedIndex = buildIndex({
+    ...index.contest,
+    problems: Object.keys(cells).map((letter) => ({ letter })),
+    teams: [team],
+  })
+  function at(t: number, overrides: Partial<Settings> = {}, manualReveal = false) {
+    const settings: Settings = { ...DEFAULT_SETTINGS, unlockCount: 1, unlockPercent: null, ...overrides }
+    return buildSnapshot({ index: timedIndex, plan: computeUnlocks(timedIndex, settings), settings, t, manualReveal })
+  }
+
+  it('题目解锁或设为我的队伍都不提前展示无时刻的最终错误数', () => {
+    for (const settings of [{}, { selfTeamId: team.id }, { selfTeamId: team.id, selfSeesLive: true }]) {
+      const s = at(14600, settings)
+      expect(s.problems.find((p) => p.letter === 'C')!.unlocked).toBe(true)
+      expect(s.rows[0].entries.some((entry) => entry.letter === 'C')).toBe(false)
+      expect(s.rows[0].cells[2].kind).toBe('empty')
+    }
+    expect(at(14600, {}, true).rows[0].entries.find((entry) => entry.letter === 'C'))
+      .toMatchObject({ kind: 'fail', attempts: 5, firstSec: Infinity })
+    expect(at(18000).rows[0].cells[2]).toMatchObject({ kind: 'rejected', attempts: 5 })
+  })
+
+  it('最终通过的题在通过前仍按已发生的错误提交展示，之后转为 AC', () => {
+    expect(at(699).rows[0].entries).toHaveLength(1) // 只有 B 在 600 秒提交过
+    expect(at(700).rows[0].entries.find((entry) => entry.firstSec === 700))
+      .toMatchObject({ kind: 'fail', attempts: 1, sec: 700 })
+    const beforeAc = at(14000).rows[0]
+    expect(beforeAc.entries.find((entry) => entry.firstSec === 700))
+      .toMatchObject({ kind: 'fail', attempts: 2, sec: 14000 })
+    expect(beforeAc.solved).toBe(1)
+    expect(at(15000, {}, true).rows[0].entries.find((entry) => entry.letter === 'A'))
+      .toMatchObject({ kind: 'ac', attempts: 4, firstSec: 700, sec: 15000 })
+  })
+
+  it('封榜精确截断逐条提交，封榜整秒的错误包含在内', () => {
+    const freeze = at(14400)
+    const frozen = at(14600)
+    expect(frozen.dataT).toBe(14400)
+    expect(frozen.rows[0].entries).toEqual(freeze.rows[0].entries)
+    expect(frozen.rows[0].entries.find((entry) => entry.letter === 'A'))
+      .toMatchObject({ kind: 'fail', attempts: 2, sec: 14000 })
+    expect(frozen.rows[0].entries.find((entry) => entry.letter === 'B'))
+      .toMatchObject({ kind: 'fail', attempts: 2, sec: 14400 })
+    expect(frozen.rows[0].cells[0]).toMatchObject({ kind: 'rejected', attempts: 2 })
+    expect(at(14600, { selfTeamId: team.id, selfSeesLive: true }).rows[0].entries.find((entry) => entry.letter === 'A'))
+      .toMatchObject({ kind: 'fail', attempts: 3, sec: 14500 })
+  })
+
+  it('未揭题仍隐藏队伍抽屉的逐条错误，自己的错误按当前时刻可见', () => {
+    expect(at(14000).rows[0].cells[0].kind).toBe('locked')
+    expect(at(14000, { selfTeamId: team.id }).rows[0].cells[0])
+      .toMatchObject({ kind: 'rejected', attempts: 2, lockedColumn: true })
+  })
+
+  it('题目表头的提交数只统计截断时刻前的流水，无时刻错误另存 pending', () => {
+    const before = Object.fromEntries(at(14000).problems.map((p) => [p.letter, p]))
+    expect(before.A).toMatchObject({ accepted: 0, submitted: 2, submittedPending: 0 })
+    expect(before.B).toMatchObject({ accepted: 0, submitted: 1, submittedPending: 0 })
+    expect(before.C).toMatchObject({ submitted: 0, submittedPending: 5 })
+    const frozen = Object.fromEntries(at(14600).problems.map((p) => [p.letter, p]))
+    expect(frozen.A.submitted).toBe(2)
+    expect(frozen.B.submitted).toBe(2)
+    const revealed = Object.fromEntries(at(14600, {}, true).problems.map((p) => [p.letter, p]))
+    expect(revealed.A.submitted).toBe(3)
+    expect(revealed.B.submitted).toBe(2)
+    expect(revealed.C).toMatchObject({ submitted: 5, submittedPending: 0 })
+  })
+
+  it('关闭封榜或封榜全揭后，解封与终榜仍揭开全部题目', () => {
+    for (const overrides of [{ freezeEnabled: false }, { unlockAtFreeze: false }]) {
+      expect(at(14600, overrides).problems.find((p) => p.letter === 'C')!.unlocked).toBe(false)
+      expect(at(14600, overrides, true).problems.every((p) => p.unlocked)).toBe(true)
+      expect(at(18000, overrides).problems.every((p) => p.unlocked)).toBe(true)
+    }
   })
 })

@@ -28,21 +28,18 @@ export function createManualTeam(input: {
 export function manualCells(team: ManualTeam, letters: string[]): Record<string, CellResult> {
   const cells: Record<string, CellResult> = {}
   for (const letter of letters) {
-    const subs = team.submissions.filter((s) => s.letter === letter)
+    const subs = team.submissions.filter((s) => s.letter === letter).sort((a, b) => a.sec - b.sec)
     if (subs.length === 0) continue
-    const ac = subs.find((s) => s.ac)
-    const wrongs = ac
-      ? subs.filter((s) => !s.ac && s.sec <= ac.sec).length
-      : subs.filter((s) => !s.ac).length
-    if (ac) {
-      cells[letter] = {
-        letter,
-        ac: true,
-        attempts: wrongs + 1,
-        acceptSec: ac.sec,
-      }
-    } else if (wrongs > 0) {
-      cells[letter] = { letter, ac: false, attempts: wrongs }
+    const acIndex = subs.findIndex((s) => s.ac)
+    // 保留真实时刻供快照截断，回退播放或封榜时不能读到未来的错误提交。
+    const upto = acIndex >= 0 ? subs.slice(0, acIndex + 1) : subs
+    const submits = upto.map(({ sec, ac }) => ({ sec, ac }))
+    cells[letter] = {
+      letter,
+      ac: acIndex >= 0,
+      attempts: upto.length,
+      acceptSec: acIndex >= 0 ? upto[upto.length - 1].sec : undefined,
+      submits,
     }
   }
   return cells

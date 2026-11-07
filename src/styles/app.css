@@ -2615,3 +2615,465 @@ button {
     transition-duration: 0.001ms !important;
   }
 }
+
+/* =========================================================
+   两行队伍榜单（赛时保留未揭题匿名）
+   ========================================================= */
+
+.board-wrap:has(.board-problems) {
+  padding: 12px 16px 24px;
+  background: #f1f3f7;
+  color-scheme: light;
+  scrollbar-color: #bcc5d3 #f1f3f7;
+}
+
+.board.board-problems {
+  min-width: max(1200px, calc(276px + var(--problem-count, 13) * 82px));
+  border: 1px solid #d8deea;
+  border-radius: 10px 10px 0 0;
+  background: #fff;
+  color: #172334;
+  font-size: 14px;
+  box-shadow: 0 1px 2px rgba(30, 45, 70, 0.04);
+}
+
+.board-problems col.col-rank {
+  width: 96px;
+}
+
+.board-problems col.col-solved {
+  width: 80px;
+}
+
+.board-problems col.col-penalty {
+  width: 100px;
+}
+
+.board-problems col.col-slot {
+  width: auto;
+}
+
+.board-problems thead th {
+  height: 58px;
+  padding: 7px 3px;
+  border-bottom: 1px solid #d8deea;
+  border-left: 0;
+  background: #f7f8fb;
+  color: #162437;
+}
+
+.board-problems thead th:first-child {
+  border-top-left-radius: 9px;
+}
+
+.board-problems thead th:last-child {
+  border-top-right-radius: 9px;
+}
+
+.board-problems .h-rank,
+.board-problems .h-solved,
+.board-problems .h-penalty {
+  left: auto;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: 0;
+  text-transform: none;
+  color: #162437;
+}
+
+.board-problems .h-rank small,
+.board-problems .h-solved small,
+.board-problems .h-penalty small {
+  display: block;
+  margin-top: 1px;
+  font-size: 10px;
+  line-height: 1.2;
+  font-weight: 400;
+  color: #8b96a8;
+}
+
+.board-problems .h-slot .n {
+  color: #162437;
+  font-size: 17px;
+  font-weight: 650;
+  line-height: 1.15;
+}
+
+.board-problems .h-slot .u {
+  margin-top: 4px;
+  color: #8792a3;
+  font-size: 10px;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+}
+
+.board-problems .score-team-info,
+.board-problems .score-team-result {
+  --score-bg: #fff;
+}
+
+.board-problems .score-team-info[data-even='true'],
+.board-problems .score-team-result[data-even='true'] {
+  --score-bg: #fafbfc;
+}
+
+.board-problems .score-team-info.is-self,
+.board-problems .score-team-result.is-self {
+  --score-bg: #edf5ff;
+}
+
+.board-problems .score-team-info td,
+.board-problems .score-team-result td {
+  background: var(--score-bg);
+  vertical-align: middle;
+}
+
+.board-problems .score-team-info td {
+  height: 45px;
+  padding-top: 5px;
+  border-bottom: 0;
+}
+
+.board-problems .score-members {
+  padding: 5px 10px 0;
+  overflow: hidden;
+}
+
+.board-problems .member-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  height: 18px;
+  color: #8993a3;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.board-problems .member-line svg {
+  width: 15px;
+  height: 15px;
+  flex: none;
+  color: #a1aabb;
+}
+
+.board-problems .member-line > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.board-problems .score-identity {
+  padding: 4px 6px 0;
+}
+
+.board-problems .score-team-button {
+  justify-content: flex-start;
+  align-items: center;
+  gap: 10px;
+  min-height: 35px;
+  width: 100%;
+  border-radius: 4px;
+  padding: 2px 4px;
+}
+
+.board-problems .score-team-button:hover {
+  background: #eaf0f8;
+}
+
+.board-problems .score-team-button:focus-visible {
+  outline: 2px solid #3767c8;
+  outline-offset: 1px;
+}
+
+.board-problems .school-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 23px;
+  height: 26px;
+  background: #477cbe;
+  clip-path: polygon(50% 0, 96% 25%, 96% 75%, 50% 100%, 4% 75%, 4% 25%);
+  color: #fff;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.board-problems .school-badge.is-starred {
+  background: #d4a00b;
+}
+
+.board-problems .score-org {
+  flex: 0 1 auto;
+  max-width: 44%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #172334;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.board-problems .score-team-name {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+  min-width: 0;
+  min-height: 32px;
+  padding-left: 10px;
+  border-left: 2px solid #2b82ff;
+}
+
+.board-problems .score-team-name .team-name {
+  display: block;
+  color: #445064;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.board-problems .score-team-name small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #8792a3;
+  font-size: 10px;
+  line-height: 1.2;
+}
+
+.board-problems .score-team-result td {
+  height: 50px;
+  padding: 4px 3px 7px;
+  border-bottom: 1px solid #e5e9f0;
+}
+
+.board-problems .c-rank {
+  position: static;
+  color: #203047;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.board-problems .rank-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 68px;
+  height: 36px;
+  border-radius: 4px;
+  background: #eceef1;
+  color: #273b56;
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+}
+
+.board-problems .c-rank.has-gold .rank-num {
+  background: #dfaa04;
+  color: #3a300c;
+}
+
+.board-problems .c-rank.has-silver .rank-num {
+  background: #b4bdcf;
+  color: #273b56;
+}
+
+.board-problems .c-rank.has-bronze .rank-num {
+  background: #bf7938;
+  color: #fff;
+}
+
+.board-problems .c-solved,
+.board-problems .c-penalty {
+  text-align: center;
+  border-right: 0;
+  color: #273b56;
+}
+
+.board-problems .c-solved .solved-num {
+  color: #273b56;
+  font-size: 20px;
+  font-weight: 650;
+}
+
+.board-problems .c-penalty {
+  font-size: 21px;
+  font-weight: 600;
+  letter-spacing: -0.06em;
+}
+
+.board-problems .pcell {
+  border-left: 0;
+}
+
+.board-problems .tile,
+.board-problems .tile-fail,
+.board-problems .tile-empty {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 3px;
+  height: 36px;
+  margin: 0;
+  padding: 0 7px;
+  border-radius: 4px;
+  box-shadow: none;
+  white-space: nowrap;
+}
+
+.board-problems .tile {
+  background: #157f54;
+}
+
+.board-problems .tile-main {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  min-width: 18px;
+  min-height: 22px;
+  padding: 0 3px;
+  border-radius: 3px;
+  color: #bce6d4;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+
+.board-problems .tile-time,
+.board-problems .tile-fail-time {
+  color: #fff;
+  font-family: var(--font-num);
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.07em;
+}
+
+.board-problems .tile-fail {
+  background: #ba394b;
+}
+
+.board-problems .tile-fail .tile-main {
+  color: #ffebee;
+  background: rgba(74, 6, 18, 0.24);
+}
+
+.board-problems .tile-empty {
+  justify-content: center;
+  background: #eaeef3;
+  color: #7a879a;
+  font-family: var(--font-num);
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.board-problems .pcell.is-first-blood .tile {
+  background: #2865ad;
+}
+
+.board-problems .pcell.is-first-blood .tile-main {
+  color: #d8e7ff;
+}
+
+.board-problems .tile-fb {
+  top: -1px;
+  right: 0;
+  width: auto;
+  height: auto;
+  background: transparent;
+  border-radius: 0;
+  color: #f5b400;
+  font-family: var(--font-body);
+  font-size: 22px;
+  line-height: 1;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.stage.is-frozen .board-problems tbody {
+  filter: none;
+}
+
+@media (max-width: 860px) {
+  .board-wrap:has(.board-problems) {
+    padding: 8px 8px 16px;
+  }
+
+  .board.board-problems {
+    min-width: max(1200px, calc(276px + var(--problem-count, 13) * 82px));
+  }
+}
+
+.board-problems .board-no-results {
+  padding: 44px 18px;
+  background: #fff;
+  color: #7a879a;
+  text-align: center;
+}
+
+/* 秒级时间保留完整数值，缩成两行以免挤出题格。 */
+.board-problems.has-second-times .tile,
+.board-problems.has-second-times .tile-fail {
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  padding: 0 3px;
+}
+
+.board-problems.has-second-times .tile-main {
+  min-width: 0;
+  min-height: 11px;
+  padding: 0 3px;
+  font-size: 10px;
+}
+
+.board-problems.has-second-times .tile-time,
+.board-problems.has-second-times .tile-fail-time {
+  font-size: 11px;
+  line-height: 1.1;
+  letter-spacing: -0.04em;
+}
+
+/* 赛时仅为已揭题显示题号，剩余列保留匿名。 */
+.board-problems.board-live .h-anonymous .n {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #98a2b3;
+}
+
+.board-problems .h-anonymous svg {
+  display: block;
+  margin-inline: auto;
+  width: 18px;
+  height: 18px;
+  color: #98a2b3;
+}
+
+.board-problems.board-live .h-anonymous .u {
+  color: #a0a9b8;
+}
+
+.board-problems.board-live .h-anonymous.is-anonymous-start,
+.board-problems.board-live .pcell.is-anonymous-start {
+  border-left: 1px solid #d8dde4;
+}
+
+.board-problems.board-live .pcell.is-anonymous.is-empty {
+  background-image: none;
+}
+
+.board-problems.board-live .pcell.is-anonymous .tile-empty {
+  display: none;
+}
+
+.board-problems .pcell.has-wrongs .tile-main {
+  background: rgba(0, 52, 35, 0.32);
+}

@@ -1,15 +1,15 @@
 // 后台回放验证：真的把页面冻住（定时器 + rAF 全停），确认时钟会追平。
 // 用法：先 `pnpm dev`，再 `node scripts/verify-background.mjs`
-import { chromium } from 'playwright-core'
+const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright-core')
 
 const BASE = process.env.BASE_URL || 'http://127.0.0.1:5173/'
 const FREEZE_MS = 3000
 
-const browser = await chromium.launch({ channel: 'chrome', headless: true })
+const browser = await chromium.launch(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH, headless: true } : { channel: 'chrome', headless: true })
 const page = await browser.newPage({ viewport: { width: 1200, height: 800 } })
 await page.goto(BASE, { waitUntil: 'networkidle' })
 await page.getByRole('button', { name: /成都站/ }).click()
-await page.waitForSelector('.board tbody tr')
+await page.waitForSelector('.board .score-team-info')
 // 导入后会弹「创建我的队伍」，这里不需要
 const skip = page.getByRole('button', { name: '先不用' })
 if (await skip.count()) {

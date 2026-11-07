@@ -184,6 +184,60 @@ describe('虚拟队伍：进榜但不改规则', () => {
   })
 })
 
+describe('虚拟队伍：手动错误保留赛时时刻', () => {
+  const contest = loadContest(CHENGDU, '所有队伍')
+  const letters = contest.problems.map((p) => p.letter)
+  // 包含回退播放时尚未发生的记录，以及首个 AC 后应被忽略的记录。
+  const manual: ManualTeam = {
+    ...team(),
+    submissions: [
+      { letter: 'A', ac: false, sec: 600 },
+      { letter: 'A', ac: false, sec: 14700 },
+      { letter: 'B', ac: true, sec: 15000 },
+      { letter: 'B', ac: false, sec: 700 },
+      { letter: 'B', ac: false, sec: 15500 },
+    ],
+  }
+  const index = buildIndex({ ...contest, teams: [...contest.teams, manualTeamRecord(manual, letters)] })
+
+  function at(t: number, selfSeesLive = false, manualReveal = false) {
+    const settings: Settings = {
+      ...DEFAULT_SETTINGS, selfTeamId: MANUAL_TEAM_ID, selfSeesLive,
+      unlockCount: null, unlockPercent: null,
+    }
+    const s = buildSnapshot({ index, plan: computeUnlocks(index, settings), settings, t, manualReveal })
+    return s.rows.find((row) => row.teamId === MANUAL_TEAM_ID)!
+  }
+
+  it('手动没通过会立即出现在赛时匿名榜格，次数与时刻只含已经发生的记录', () => {
+    expect(at(599).entries).toHaveLength(0)
+    expect(at(600).entries).toMatchObject([{ kind: 'fail', attempts: 1, firstSec: 600, sec: 600 }])
+    const live = at(800)
+    expect(live.entries).toMatchObject([
+      { kind: 'fail', attempts: 1, firstSec: 600, sec: 600 },
+      { kind: 'fail', attempts: 1, firstSec: 700, sec: 700 },
+    ])
+    expect(live.entries.every((entry) => entry.letter === undefined)).toBe(true)
+    expect(live.solved).toBe(0)
+  })
+
+  it('封榜后默认停在封榜时刻，自己的实时模式才继续增长并转为 AC', () => {
+    expect(at(14800).entries.find((entry) => entry.letter === 'A')).toMatchObject({ kind: 'fail', attempts: 1, sec: 600 })
+    expect(at(14800, true).entries.find((entry) => entry.letter === 'A')).toMatchObject({ kind: 'fail', attempts: 2, sec: 14700 })
+    expect(at(15100).entries.find((entry) => entry.letter === 'B')).toMatchObject({ kind: 'fail', attempts: 1, sec: 700 })
+    expect(at(15100, true).entries.find((entry) => entry.letter === 'B')).toMatchObject({ kind: 'ac', attempts: 2, firstSec: 700, sec: 15000 })
+  })
+
+  it('回退或提前解封都不会泄露未来提交，首个 AC 后的提交始终忽略', () => {
+    at(15100, true)
+    expect(at(650).entries).toMatchObject([{ kind: 'fail', attempts: 1, firstSec: 600, sec: 600 }])
+    expect(at(650, false, true).entries).toMatchObject([{ kind: 'fail', attempts: 1, letter: 'A', sec: 600 }])
+    expect(manualCells(manual, letters).B.submits).toEqual([{ sec: 700, ac: false }, { sec: 15000, ac: true }])
+    expect(at(18000).entries.find((entry) => entry.letter === 'B')).toMatchObject({ kind: 'ac', attempts: 2 })
+    expect(manual.submissions[2]).toEqual({ letter: 'B', ac: true, sec: 15000 })
+  })
+})
+
 describe('虚拟队伍：持久化', () => {
   it('没有 localStorage 的环境下安静返回 null', () => {
     expect(loadManualTeam('whatever')).toBeNull()

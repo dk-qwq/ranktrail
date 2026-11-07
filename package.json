@@ -1,9 +1,9 @@
 {
-  "name": "fogboard",
+  "name": "ranktrail",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
-  "description": "雾榜 FogBoard — CCPC 2026 新赛制赛时榜单回放",
+  "description": "题迹 RankTrail — dk_qwq 的算法竞赛榜单回放与 VP 工具",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5173 --strictPort",
     "build": "vite build",
@@ -16,7 +16,9 @@
     "verify:team": "node scripts/verify-team.mjs",
     "verify:xcpcio": "node scripts/verify-xcpcio.mjs",
     "verify:single": "node scripts/verify-single.mjs",
-    "verify:background": "node scripts/verify-background.mjs"
+    "verify:background": "node scripts/verify-background.mjs",
+    "verify:board": "node scripts/verify-board-layout.mjs",
+    "verify:responsive": "node scripts/verify-responsive.mjs"
   },
   "dependencies": {
     "@fontsource/ibm-plex-mono": "^5.2.6",
@@ -34,5 +36,16 @@
     "typescript": "^5.9.3",
     "vite": "^8.3.5",
     "vitest": "^5.0.5"
-  }
+  },
+  "license": "MIT",
+  "author": "dk_qwq",
+  "homepage": "https://dk-qwq.github.io/ranktrail/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dk-qwq/ranktrail.git"
+  },
+  "bugs": {
+    "url": "https://github.com/dk-qwq/ranktrail/issues"
+  },
+  "packageManager": "pnpm@11.23.0"
 }

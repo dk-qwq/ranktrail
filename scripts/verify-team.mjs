@@ -1,11 +1,15 @@
 // 虚拟队伍端到端验证：建队 → 记录通过/没通过 → 榜面与解锁都不受我影响。
 // 用法：先 `pnpm dev`，再 `node scripts/verify-team.mjs`
-import { chromium } from 'playwright-core'
+const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright-core')
+
+import { mkdirSync } from 'node:fs'
 
 const BASE = process.env.BASE_URL || 'http://127.0.0.1:5173/'
+const OUT = process.env.SCREENSHOT_DIR || 'docs/screenshots'
+mkdirSync(OUT, { recursive: true })
 
 const errors = []
-const browser = await chromium.launch({ channel: 'chrome', headless: true })
+const browser = await chromium.launch(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH, headless: true } : { channel: 'chrome', headless: true })
 const page = await browser.newPage({ viewport: { width: 1600, height: 980 } })
 page.on('console', (m) => {
   if (m.type() === 'error') errors.push(m.text())
@@ -19,21 +23,22 @@ const seekRatio = async (ratio) => {
   await page.waitForTimeout(200)
 }
 
-const selfRow = page.locator('.row.is-self')
-const selfSolved = async () => Number((await selfRow.locator('.solved-num').innerText()).trim())
+const selfInfo = page.locator('.score-team-info.is-self')
+const selfResult = page.locator('.score-team-result.is-self')
+const selfSolved = async () => Number((await selfResult.locator('.solved-num').innerText()).trim())
 
 await page.goto(BASE, { waitUntil: 'networkidle' })
 await page.getByRole('button', { name: /成都站/ }).click()
 await page.waitForSelector('.dialog')
-await page.screenshot({ path: 'docs/screenshots/20-team-dialog.png' })
+await page.screenshot({ path: OUT + '/20-team-dialog.png' })
 
 // 1. 建队
 await page.locator('.dialog input').first().fill('测试一队')
 await page.getByRole('button', { name: '创建并加入榜单' }).click()
 await page.waitForTimeout(500)
 
-const rows = await page.locator('.board tbody tr').count()
-const tags = await page.locator('.tag-virtual').count()
+const rows = await page.locator('.board .score-team-info').count()
+const tags = await page.locator('.score-team-info .score-team-name small').filter({ hasText: '虚拟队伍' }).count()
 console.log(`建队后：${rows} 行，虚拟标签 ${tags} 个`)
 if (rows !== 329) throw new Error(`建队后应该是 329 行，实际 ${rows}`)
 if (tags !== 1) throw new Error(`虚拟标签数异常：${tags}`)
@@ -67,7 +72,7 @@ await page.waitForTimeout(300)
 if ((await page.locator('.manual-log li').count()) !== 2) throw new Error('撤销没有生效')
 
 // 5. 抽屉里能看到自己的逐题结果（此刻 F 还没解锁）
-await selfRow.locator('.team-button').click()
+await selfInfo.locator('.team-button').click()
 await page.waitForSelector('.drawer')
 const ac = await page.locator('.drawer .mini-cell.ac').count()
 const locked = await page.locator('.drawer .mini-cell.locked').count()
@@ -82,7 +87,7 @@ if ((await selfSolved()) !== 0) throw new Error('AC 之前应该是 0 题')
 
 await seekRatio(1600 / 18000)
 await page.waitForTimeout(300)
-await page.screenshot({ path: 'docs/screenshots/19-virtual-team.png' })
+await page.screenshot({ path: OUT + '/19-virtual-team.png' })
 
 // 7. 封榜之后：榜面停住，只有自己的卡片继续记账
 await seekRatio(16200 / 18000) // 4:30
@@ -97,7 +102,7 @@ console.log(`封榜中记一题：榜面 ${boardBefore} → ${boardAfter}，自�
 if (boardAfter !== boardBefore) throw new Error('封榜后自己那行不该跟着变')
 if (!cardMeta.includes('2 题')) throw new Error(`自己的账本应该是 2 题：${cardMeta}`)
 if (hint !== 1) throw new Error('没有提示"封榜中"')
-await page.screenshot({ path: 'docs/screenshots/21-frozen-self.png' })
+await page.screenshot({ path: OUT + '/21-frozen-self.png' })
 
 // 8. 解封之后追平
 await page.getByRole('button', { name: '解封' }).click()

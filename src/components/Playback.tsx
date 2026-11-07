@@ -104,12 +104,12 @@ export function Playbar(props: PlaybarProps) {
       </label>
 
       <div className="playbar-right">
-        {filtered != null ? <span className="chip countdown">筛选 {filtered} 队</span> : null}
-        <span className="chip countdown">
+        {filtered != null ? <span className="chip countdown filter-count">筛选 {filtered} 队</span> : null}
+        <span className="chip countdown problem-count">
           题目 {unlocked}/{problemCount}
         </span>
         {showFreezeChip ? (
-          <span className="chip countdown" title="距离封榜">
+          <span className="chip countdown freeze-countdown" title="距离封榜">
             封榜 −{formatClock(toFreeze ?? 0)}
           </span>
         ) : null}

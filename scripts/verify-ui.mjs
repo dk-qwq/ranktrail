@@ -1,14 +1,14 @@
 // 用本机 Chrome 跑一遍核心交互并截图。
 // 用法：先 `pnpm dev`，再 `node scripts/verify-ui.mjs`
-import { chromium } from 'playwright-core'
+const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright-core')
 import { mkdirSync, readFileSync } from 'node:fs'
 
 const BASE = process.env.BASE_URL || 'http://127.0.0.1:5173/'
-const OUT = 'docs/screenshots'
+const OUT = process.env.SCREENSHOT_DIR || 'docs/screenshots'
 mkdirSync(OUT, { recursive: true })
 
 const errors = []
-const browser = await chromium.launch({ channel: 'chrome', headless: true })
+const browser = await chromium.launch(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH, headless: true } : { channel: 'chrome', headless: true })
 const page = await browser.newPage({ viewport: { width: 1600, height: 980 }, deviceScaleFactor: 1 })
 page.on('console', (msg) => {
   if (msg.type() === 'error') errors.push(`console: ${msg.text()}`)
@@ -45,14 +45,14 @@ const skipTeamDialog = async () => {
 // 载入成都站示例
 await page.getByRole('button', { name: /成都站/ }).click()
 await skipTeamDialog()
-await page.waitForSelector('.board tbody tr')
-const rowCount = await page.locator('.board tbody tr').count()
+await page.waitForSelector('.board .score-team-info')
+const rowCount = await page.locator('.board .score-team-info').count()
 const colCount = await page.locator('.board thead th').count()
 const slotCount = await page.locator('.board thead th.h-slot').count()
 console.log(`rows=${rowCount} cols=${colCount} slots=${slotCount}`)
 if (rowCount !== 328) throw new Error(`期望 328 行，实际 ${rowCount}`)
-if (colCount !== 19) throw new Error(`期望 19 列（4 信息列 + 15 个通过位），实际 ${colCount}`)
-if (slotCount !== 15) throw new Error(`期望 15 个通过位，实际 ${slotCount}`)
+if (colCount !== 16) throw new Error(`期望 16 列（3 信息列 + 13 道题），实际 ${colCount}`)
+if (slotCount !== 13) throw new Error(`期望 13 个题目格，实际 ${slotCount}`)
 await shot('02-t0')
 
 // 播放时钟按墙钟推算：后台标签页会冻结 rAF，靠帧累加就会"挂后台不动"
@@ -99,13 +99,14 @@ const openAt131 = await page.locator('.pcard.open').count()
 console.log(`2:16 已点亮 ${openAt131} 题`)
 if (openAt131 !== 5) throw new Error(`2:16 应该有 5 题解锁，实际 ${openAt131}`)
 
-// 解锁后：榜上对应格子补出题号；题卡上通过/提交都能看到
-const letters = await page.locator('.tile-letter').count()
-const golds = await page.locator('.rank-medal.medal-gold').count()
+// 解锁后：已揭题固定到左侧；题卡上通过/提交都能看到
+const namedColumns = await page.locator('.h-problem').count()
+const namedCells = await page.locator('.pcell:not(.is-anonymous):not(.is-empty)').count()
+const golds = await page.locator('.c-rank.has-gold').count()
 const foggy = await page.locator('.pcard.locked').count()
 const cardText = (await page.locator('.pcard.open').first().innerText()).replace(/\s+/g, ' ')
-console.log(`格子题号 ${letters} 个 · 金牌 ${golds} 人 · 雾卡 ${foggy} 张 · 卡片「${cardText}」`)
-if (letters < 100) throw new Error(`解锁后格子应该带题号，实际 ${letters}`)
+console.log(`已揭题列 ${namedColumns} 个、对应结果格 ${namedCells} 个 · 金牌 ${golds} 人 · 雾卡 ${foggy} 张 · 卡片「${cardText}」`)
+if (namedColumns !== 5 || namedCells < 100) throw new Error(`解锁后的固定题目列异常：${namedColumns} 列 / ${namedCells} 个结果格`)
 if (golds !== 33) throw new Error(`328 队按 10% 应该有 33 个金牌，实际 ${golds}`)
 if (foggy !== 8) throw new Error(`2:16 应该还有 8 张雾卡，实际 ${foggy}`)
 if (!/ \d+ \d+\+?/.test(cardText)) throw new Error(`题卡上应该同时有通过数与提交数：${cardText}`)
@@ -139,7 +140,7 @@ await page.waitForTimeout(250)
 await shot('07-final')
 
 // 队伍抽屉
-await page.locator('.board tbody tr').nth(0).locator('.team-button').click()
+await page.locator('.board .score-team-info').nth(0).locator('.team-button').click()
 await page.waitForSelector('.drawer')
 await shot('08-drawer')
 await page.keyboard.press('Escape')
@@ -169,8 +170,8 @@ await page.getByRole('button', { name: '导入' }).click()
 await page.waitForSelector('.dialog')
 await page.getByRole('button', { name: /秦皇岛站/ }).click()
 await skipTeamDialog()
-await page.waitForSelector('.board tbody tr')
-const qhdRows = await page.locator('.board tbody tr').count()
+await page.waitForSelector('.board .score-team-info')
+const qhdRows = await page.locator('.board .score-team-info').count()
 console.log(`秦皇岛 rows=${qhdRows}`)
 if (qhdRows !== 375) throw new Error(`秦皇岛期望 375 行，实际 ${qhdRows}`)
 await seekRatio(3100 / 18000)
@@ -186,7 +187,7 @@ await page.setViewportSize({ width: 1600, height: 980 })
 await seekRatio(1210 / 18000)
 await page.locator('.search-box input').fill('武汉')
 await page.waitForTimeout(200)
-const filtered = await page.locator('.board tbody tr').count()
+const filtered = await page.locator('.board .score-team-info').count()
 console.log(`搜索「武汉」→ ${filtered} 行`)
 if (filtered === 0 || filtered >= 100) throw new Error(`搜索筛选异常：${filtered}`)
 await shot('14-search')
@@ -197,11 +198,11 @@ await page.getByRole('button', { name: '导入' }).click()
 await page.waitForSelector('.dialog')
 await page.getByRole('button', { name: /成都站/ }).click()
 await skipTeamDialog()
-await page.waitForSelector('.board tbody tr')
+await page.waitForSelector('.board .score-team-info')
 await seekRatio(3600 / 18000)
 
 // 普通队伍的抽屉：未解锁的题应该留雾
-await page.locator('.board tbody tr').nth(1).locator('.team-button').click()
+await page.locator('.board .score-team-info').nth(1).locator('.team-button').click()
 await page.waitForSelector('.drawer')
 const otherLocked = await page.locator('.drawer .mini-cell.locked').count()
 console.log(`普通队伍抽屉里未解锁的格子：${otherLocked}`)
@@ -210,11 +211,11 @@ await page.keyboard.press('Escape')
 await page.waitForTimeout(150)
 
 // 设为我的队伍后：自己的格子全部可见
-await page.locator('.board tbody tr').nth(0).locator('.team-button').click()
+await page.locator('.board .score-team-info').nth(0).locator('.team-button').click()
 await page.waitForSelector('.drawer')
 await page.getByRole('button', { name: '设为「我的队伍」' }).click()
 await page.waitForTimeout(300)
-await page.locator('.row.is-self .team-button').click()
+await page.locator('.score-team-info.is-self .team-button').click()
 await page.waitForSelector('.drawer')
 const selfLocked = await page.locator('.drawer .mini-cell.locked').count()
 const selfAc = await page.locator('.drawer .mini-cell.ac').count()
@@ -254,12 +255,12 @@ await page.locator('.qoj-input').fill(qojText)
 await page.getByRole('button', { name: '导入这段内容' }).click()
 await skipTeamDialog()
 await page.waitForTimeout(500)
-const qojRows = await page.locator('.board tbody tr').count()
+const qojRows = await page.locator('.board .score-team-info').count()
 const railText = await page.locator('.rail').innerText()
 console.log(`QOJ 纯文本导入 → ${qojRows} 行；来源标记：${railText.includes('QOJ') ? 'QOJ ✓' : '缺失'}`)
 if (qojRows !== 5) throw new Error(`QOJ 导入行数异常：${qojRows}`)
 if (!railText.includes('QOJ')) throw new Error('右栏没有显示 QOJ 来源')
-const qojBoard = await page.locator('.board tbody tr').first().innerText()
+const qojBoard = await page.locator('.board .score-team-info').first().innerText()
 if (!qojBoard.includes('USA1')) throw new Error(`QOJ 第一行异常：${qojBoard}`)
 await seekRatio(0.62)
 await shot('16-qoj')
