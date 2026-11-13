@@ -1,6 +1,7 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { runInNewContext } from 'node:vm'
 import { dumpFromText, parseQojDump, QOJ_SNIPPET, type QojDump } from './qoj'
 import { aggregateTeam } from '../model/aggregate'
 
@@ -162,10 +163,117 @@ describe('QOJ 抓取内容的容错', () => {
     const dump: QojDump = { rows: [['a', 'b'], ['c', 'd']].map((r) => r.map(cell)) }
     expect(() => parseQojDump(dump)).toThrow(/题目列/)
   })
+})
 
-  it('给用户的抓取脚本包含表格探测与复制', () => {
-    expect(QOJ_SNIPPET).toContain('querySelectorAll')
-    expect(QOJ_SNIPPET).toContain('copy(')
+function standingsFixture(
+  pages: string[][][],
+  initialPage: number,
+  { brokenPage, expectedTeams }: { brokenPage?: number; expectedTeams?: number } = {},
+) {
+  let activePage = initialPage
+  const copy = vi.fn<(json: string) => void>()
+  const reportError = vi.fn()
+  const root = {
+    querySelector(selector: string) {
+      if (selector === '.pagination li.active' && pages.length > 1) {
+        return { textContent: String(activePage) }
+      }
+      return null
+    },
+    querySelectorAll(selector: string) {
+      if (selector === '.pagination li:not(.disabled) > a' && pages.length > 1) {
+        return pages.map((_, index) => ({
+          textContent: String(index + 1),
+          click() {
+            if (index + 1 !== brokenPage) activePage = index + 1
+          },
+        })).filter((_, index) => Math.abs(index + 1 - activePage) <= 1)
+      }
+      if (selector !== 'table') return []
+      const [header, ...teams] = [HEADER, ...pages[activePage - 1]].map((row) =>
+        row.map((text) => ({
+          innerText: text,
+          textContent: text,
+          attributes: [],
+          getAttribute: () => null,
+        })),
+      )
+      return [{
+        querySelectorAll(tableSelector: string) {
+          if (tableSelector === 'td') return teams.flat()
+          if (tableSelector === 'tr') return [header, ...teams].map((children) => ({ children }))
+          return []
+        },
+      }]
+    },
+  }
+  const document = {
+    title: 'Test Contest - QOJ.ac',
+    querySelector: (selector: string) =>
+      selector === '#standings' && (pages.length > 1 || expectedTeams !== undefined) ? root : null,
+    querySelectorAll: root.querySelectorAll,
+  }
+  return {
+    copy,
+    reportError,
+    currentPage: () => activePage,
+    run: () => runInNewContext(QOJ_SNIPPET, {
+      document,
+      window: { standings: expectedTeams === undefined ? undefined : Array(expectedTeams) },
+      location: { href: 'https://qoj.ac/contest/2575/standings#standings' },
+      console: { log: vi.fn(), warn: reportError, error: reportError },
+      copy,
+    }),
+  }
+}
+
+describe('QOJ 抓取脚本分页', () => {
+  it('从中间页开始也能按顺序导入所有队伍，并恢复原页', async () => {
+    const makePage = (firstRank: number, row: string[]) =>
+      Array.from({ length: 100 }, (_, i) => {
+        const rank = firstRank + i
+        return [String(rank), `Team ${rank}`, ...row.slice(2)]
+      })
+    const last = ['200', 'Team 201', ...Array<string>(13).fill('-'), '0', '0', '0%']
+    const fixture = standingsFixture([makePage(1, ROW1), makePage(101, ROW2), [last]], 2)
+
+    await fixture.run()
+
+    expect(fixture.copy).toHaveBeenCalledTimes(1)
+    const dump = dumpFromText(fixture.copy.mock.calls[0][0])
+    expect(dump.rows).toHaveLength(202)
+    const { teams } = parseQojDump(dump)
+    expect(teams.map((team) => team.name)).toEqual(Array.from({ length: 201 }, (_, i) => `Team ${i + 1}`))
+    expect(teams[200].source.rank).toBe(200)
+    expect(fixture.currentPage()).toBe(2)
+  })
+
+  it('没有分页的榜单仍能导入', async () => {
+    const fixture = standingsFixture([[ROW1, ROW2]], 1)
+
+    await fixture.run()
+
+    expect(fixture.copy).toHaveBeenCalledTimes(1)
+    expect(parseQojDump(dumpFromText(fixture.copy.mock.calls[0][0])).teams).toHaveLength(2)
+  })
+
+  it('分页跳转失败时提示错误，且不复制不完整的榜单', async () => {
+    const fixture = standingsFixture([[ROW1], [ROW2], [ROW1]], 2, { brokenPage: 3 })
+
+    await fixture.run()
+
+    expect(fixture.copy).not.toHaveBeenCalled()
+    expect(fixture.reportError).toHaveBeenCalled()
+    expect(fixture.currentPage()).toBe(2)
+  })
+
+  it('页码缺失导致队伍总数不符时停止导出', async () => {
+    const fixture = standingsFixture([[ROW1]], 1, { expectedTeams: 2 })
+
+    await fixture.run()
+
+    expect(fixture.copy).not.toHaveBeenCalled()
+    expect(fixture.reportError.mock.calls[0][0]).toBe('QOJ 榜单抓取失败：抓到 1 队，QOJ 榜单共有 2 队')
   })
 })
 

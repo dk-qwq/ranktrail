@@ -26,7 +26,8 @@ export const DEFAULT_SETTINGS: Settings = {
   showFullInfo: false,
 }
 
-const STORAGE_KEY = 'fogboard.settings.v1'
+const STORAGE_KEY = 'ranktrail.settings.v1'
+const LEGACY_STORAGE_KEY = 'fogboard.settings.v1'
 /** 存储结构版本：v2 起 selfSeesLive 默认关闭（老数据迁移一次） */
 const SCHEMA = 2
 
@@ -67,7 +68,7 @@ export function normalizeSettings(input: Partial<Settings> | null | undefined): 
 export function loadSettings(): Settings {
   try {
     if (typeof localStorage === 'undefined') return { ...DEFAULT_SETTINGS }
-    const raw = localStorage.getItem(STORAGE_KEY)
+    const raw = localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem(LEGACY_STORAGE_KEY)
     if (!raw) return { ...DEFAULT_SETTINGS }
     const parsed = JSON.parse(raw) as Partial<Settings> & { schema?: number }
     const settings = normalizeSettings(parsed)
@@ -83,6 +84,7 @@ export function saveSettings(settings: Settings): void {
   try {
     if (typeof localStorage === 'undefined') return
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...settings, schema: SCHEMA }))
+    localStorage.removeItem(LEGACY_STORAGE_KEY)
   } catch {
     /* 隐私模式下忽略 */
   }

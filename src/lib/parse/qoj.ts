@@ -5,8 +5,7 @@ import { info, warning } from './shared'
 /**
  * QOJ 榜单导入。
  *
- * qoj.ac 挂在 Cloudflare 的 JS 挑战后面：脚本、curl、Node fetch 一律 403，
- * 只有真人浏览器能读到页面。所以数据只能由浏览器侧抓出来 —— 见 QOJ_SNIPPET。
+ * QOJ 榜单可能需要登录或通过 Cloudflare 检查。抓取脚本在已打开的榜单页读取表格。
  *
  * 抓取结果是一张表的原样序列化（单元格文本 + title + data-*），
  * 解析（认表头、认 +k/-n、认时刻）全部放在这里做，抓取端保持"哑"。
@@ -28,25 +27,77 @@ export interface QojDump {
   rows: QojCell[][]
 }
 
-/** 在 DevTools Console 里执行的一段脚本：把榜单表序列化后复制到剪贴板 */
+/** 在 QOJ 控制台运行，合并分页表格并复制到剪贴板 */
 export const QOJ_SNIPPET = `(() => {
-  const score = (tb) => [...tb.querySelectorAll('td')].filter(c => /^[+\\-]/.test(c.innerText.trim())).length;
-  const cand = [...document.querySelectorAll('table')].map(tb => [score(tb), tb]).sort((a, b) => b[0] - a[0])[0];
-  if (!cand || cand[0] < 5) { console.warn('没找到榜单表格，请确认当前页面是比赛榜单'); return; }
-  const rows = [...cand[1].querySelectorAll('tr')].map(tr => [...tr.children].map(c => ({
-    t: c.innerText.replace(/\\s+/g, ' ').trim(),
-    ti: c.getAttribute('title') || '',
-    d: Object.fromEntries([...c.attributes].filter(a => a.name.startsWith('data-')).map(a => [a.name.slice(5), a.value]))
-  })));
+  const standingsRoot = document.querySelector('#standings');
+  const pageNumber = (el) => Number(el?.textContent?.trim());
+  const currentPage = () => pageNumber(standingsRoot?.querySelector('.pagination li.active')) || 1;
+  const findPage = (page) => [...(standingsRoot?.querySelectorAll('.pagination li:not(.disabled) > a') ?? [])]
+    .find(link => pageNumber(link) === page);
+  // QOJ 的分页在浏览器中同步重绘表格和页码。每次翻页后重新查找链接。
+  const goToPage = (page) => {
+    while (currentPage() !== page) {
+      const current = currentPage();
+      const step = current + Math.sign(page - current);
+      const link = findPage(page) || findPage(step);
+      if (!link) throw new Error('找不到第 ' + step + ' 页的链接');
+      const target = pageNumber(link);
+      if (typeof window.jQuery === 'function') window.jQuery(link).triggerHandler('click');
+      if (currentPage() === current) link.click();
+      if (currentPage() !== target) throw new Error('无法打开第 ' + target + ' 页');
+    }
+  };
+  const readRows = () => {
+    const tables = [...(standingsRoot || document).querySelectorAll('table')];
+    let table = tables[0];
+    if (!standingsRoot) {
+      const score = (tb) => [...tb.querySelectorAll('td')].filter(c => /^\\*?[+\\-]/.test(c.innerText.trim())).length;
+      const candidate = tables.map(tb => [score(tb), tb]).sort((a, b) => b[0] - a[0])[0];
+      table = candidate?.[0] >= 5 ? candidate[1] : null;
+    }
+    if (!table) throw new Error('没找到榜单表格，请确认当前页面是比赛榜单');
+    return [...table.querySelectorAll('tr')].map(tr => [...tr.children].map(c => ({
+      t: c.innerText.replace(/\\s+/g, ' ').trim(),
+      ti: c.getAttribute('title') || '',
+      d: Object.fromEntries([...c.attributes].filter(a => a.name.startsWith('data-')).map(a => [a.name.slice(5), a.value]))
+    })));
+  };
+  const initialPage = currentPage();
+  const headerText = (row) => row?.map(cell => cell.t).join('\\t');
+  let rows;
+  try {
+    goToPage(1);
+    rows = readRows();
+    if (!rows.length) throw new Error('榜单表格为空');
+    const header = headerText(rows[0]);
+    for (let page = 2; findPage(page); page += 1) {
+      goToPage(page);
+      const [pageHeader, ...teams] = readRows();
+      if (!teams.length || headerText(pageHeader) !== header) {
+        throw new Error('第 ' + page + ' 页的榜单表格不完整');
+      }
+      rows.push(...teams);
+    }
+    const fullStandings = typeof standings === 'undefined' ? window.standings : standings;
+    if (standingsRoot && Array.isArray(fullStandings) && rows.length - 1 !== fullStandings.length) {
+      throw new Error('抓到 ' + (rows.length - 1) + ' 队，QOJ 榜单共有 ' + fullStandings.length + ' 队');
+    }
+  } catch (error) {
+    console.warn('QOJ 榜单抓取失败：' + error.message);
+    return;
+  } finally {
+    try { goToPage(initialPage); }
+    catch (error) { console.warn('未能恢复原来的榜单页：' + error.message); }
+  }
   const out = { v: 1, url: location.href, title: document.title, rows };
   const json = JSON.stringify(out);
-  console.log('雾榜：抓到 ' + rows.length + ' 行 / ' + json.length + ' 字节');
+  console.log('题迹：抓到 ' + (rows.length - 1) + ' 支队伍');
   if (typeof copy === 'function') { copy(json); }
   else {
     const ta = document.createElement('textarea'); ta.value = json;
     document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
   }
-  console.log('已复制，回到雾榜点「粘贴并导入」');
+  console.log('已复制，回到题迹点「粘贴并导入」');
 })()`
 
 const LETTER_HEADER = /^([A-Z])(\s|\/|\(|$)/

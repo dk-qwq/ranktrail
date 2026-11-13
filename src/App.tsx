@@ -763,7 +763,7 @@ function EmptyState({
           </p>
           <p className="source-credit">
             <span>由 {BRAND.owner} 维护 · <a href={BRAND.repoUrl} target="_blank" rel="noreferrer">GitHub</a></span>
-            <span>基于 <a href={BRAND.upstream.url} target="_blank" rel="noreferrer">{BRAND.upstream.author} / {BRAND.upstream.name}</a> 改造</span>
+            <span>基于 <a href={BRAND.upstream.url} target="_blank" rel="noreferrer">{BRAND.upstream.author} 的开源项目</a></span>
           </p>
         </div>
       </div>

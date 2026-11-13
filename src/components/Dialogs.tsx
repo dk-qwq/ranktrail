@@ -477,13 +477,12 @@ export function ImportDialog({
       <div className="field">
         <span className="field-label">QOJ 榜单</span>
         <p className="field-help">
-          qoj.ac 有 Cloudflare 防护，脚本和 curl 都被挡，只能从你自己的浏览器里取：
-          <b>在榜单页 Ctrl+A → Ctrl+C</b>，回来点「粘贴并导入」。
-          整页文本、抓取脚本的 JSON、另存的网页 HTML，三种都能吃。
+          <b>分页榜单请复制全榜抓取脚本</b>，在 QOJ 榜单页的开发者工具控制台运行，再回来点「粘贴并导入」。
+          直接复制页面文本或另存 HTML 会导入当前页。
         </p>
         <div className="qoj-row">
           <button className="action-btn" onClick={copySnippet}>
-            {copied ? '已复制 ✓' : '复制抓取脚本（备选）'}
+            {copied ? '已复制 ✓' : '复制全榜抓取脚本'}
           </button>
           <button className="action-btn primary" onClick={pasteAndImport}>
             粘贴并导入
@@ -547,7 +546,7 @@ function SheetRow({
 export function RuleDialog({ onClose }: { onClose: () => void }) {
   return (
     <Modal title={BRAND.nameChinese + ' · 规则与来源'} onClose={onClose} wide>
-      <p className="source-credit">{BRAND.nameChinese} {BRAND.name} 由 {BRAND.owner} 维护，基于 <a href={BRAND.upstream.url} target="_blank" rel="noreferrer">{BRAND.upstream.author} 的 {BRAND.upstream.name}</a>，沿用 MIT 开源协议。</p>
+      <p className="source-credit">{BRAND.nameChinese} {BRAND.name} 由 {BRAND.owner} 维护，基于 <a href={BRAND.upstream.url} target="_blank" rel="noreferrer">{BRAND.upstream.author} 的开源项目</a>，沿用 MIT 开源协议。</p>
       <ol className="rules">
         <li>
           <strong>赛时主榜将已揭题固定在左侧，其余提交仍按时间顺序匿名排列。</strong>

@@ -3,7 +3,8 @@ import type { CellResult, ManualSubmission, ManualTeam, TeamRecord } from '../ty
 /** 虚拟队伍的固定 id：只可能有一支 */
 export const MANUAL_TEAM_ID = 'virtual'
 
-const STORAGE_KEY = 'fogboard.manual.v1'
+const STORAGE_KEY = 'ranktrail.manual.v1'
+const LEGACY_STORAGE_KEY = 'fogboard.manual.v1'
 
 export function createManualTeam(input: {
   name: string
@@ -119,10 +120,12 @@ export function saveManualTeam(contestId: string, team: ManualTeam | null): void
   try {
     if (typeof localStorage === 'undefined') return
     if (!team) {
+      localStorage.removeItem(LEGACY_STORAGE_KEY)
       localStorage.removeItem(STORAGE_KEY)
       return
     }
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ contestId, team } satisfies StoredManual))
+    localStorage.removeItem(LEGACY_STORAGE_KEY)
   } catch {
     /* 隐私模式忽略 */
   }
@@ -131,7 +134,7 @@ export function saveManualTeam(contestId: string, team: ManualTeam | null): void
 export function loadManualTeam(contestId: string): ManualTeam | null {
   try {
     if (typeof localStorage === 'undefined') return null
-    const raw = localStorage.getItem(STORAGE_KEY)
+    const raw = localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem(LEGACY_STORAGE_KEY)
     if (!raw) return null
     const parsed = JSON.parse(raw) as StoredManual
     if (!parsed || parsed.contestId !== contestId || !parsed.team) return null

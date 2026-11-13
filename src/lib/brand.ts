@@ -1,4 +1,4 @@
-/** Public project identity. Keep legacy storage keys unchanged for existing users. */
+/** Public project identity and upstream attribution. */
 export const BRAND = {
   name: 'RankTrail',
   nameChinese: '题迹',
@@ -7,7 +7,6 @@ export const BRAND = {
   siteUrl: 'https://dk-qwq.github.io/ranktrail/',
   repoUrl: 'https://github.com/dk-qwq/ranktrail',
   upstream: {
-    name: 'FogBoard（雾榜）',
     author: 'Silverwolfnya',
     url: 'https://github.com/Silverwolfnya/fogboard',
   },

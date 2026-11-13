@@ -4,9 +4,7 @@
 
 **面向算法竞赛训练的榜单回放工具，由 [dk_qwq](https://github.com/dk-qwq) 维护。**
 
-本项目基于 **[Silverwolfnya](https://github.com/Silverwolfnya)** 的 **[雾榜 FogBoard](https://github.com/Silverwolfnya/fogboard)** 修改而来，保留并继续使用上游的榜单解析、回放与赛制模拟能力。感谢原作者的开源工作。
-
-这个分支将产品名称改为「题迹 RankTrail」，统一浅色界面，调整赛时已揭题与匿名题的排列、封榜后的完整逐题布局、金银铜排名底色和响应式显示，并完善虚拟队伍的封榜行为与 GitHub Pages 自动部署。
+题迹采用浅色界面，支持赛时匿名追榜、封榜逐题回放、金银铜排名和虚拟队伍。感谢上游作者的开源工作。
 
 [在线使用](https://dk-qwq.github.io/ranktrail/) · [源代码](https://github.com/dk-qwq/ranktrail) · [上游项目](https://github.com/Silverwolfnya/fogboard)
 
@@ -107,7 +105,7 @@ node scripts/fetch-xcpcio.mjs "https://board.xcpcio.com/ccpc/11th/chongqing?grou
 
 ### QOJ 榜单
 
-在 QOJ 榜单页复制整页文本后，使用页面中的粘贴导入；也可以导入另存的 HTML，或使用导入框提供的抓取脚本取得 JSON。需要登录或遇到访问挑战时，应先在自己的浏览器中正常打开榜单。
+分页榜单请在题迹的导入框点「复制全榜抓取脚本」，再到 QOJ 榜单页打开开发者工具（F12），在控制台运行脚本。脚本会合并各页并复制 JSON，完成后回到题迹点「粘贴并导入」。直接复制榜单页文本或导入另存的 HTML 会导入当前页。需要登录或遇到访问挑战时，先在浏览器中正常打开榜单。
 
 QOJ 的 `+k` 表示 k 次错误后通过，因此提交总次数为 k + 1；`*+` 表示首杀，`-n` 表示错误提交。时间通常按 `h:mm` 解析，解析器也会结合罚时尝试识别 `m:ss`。导入数据必须包含通过时刻，只有通过标记而没有时间的榜单无法生成可靠回放。
 
@@ -158,7 +156,7 @@ src/
 
 ## 开源协议与致谢
 
-题迹 RankTrail 基于 [Silverwolfnya/fogboard](https://github.com/Silverwolfnya/fogboard)，原项目名为「雾榜 FogBoard」，原作者为 [Silverwolfnya](https://github.com/Silverwolfnya)。
+题迹 RankTrail 基于 [Silverwolfnya/fogboard](https://github.com/Silverwolfnya/fogboard)，原作者为 [Silverwolfnya](https://github.com/Silverwolfnya)。
 
 本项目遵循 **[MIT License](LICENSE)**，保留上游版权声明：
 
