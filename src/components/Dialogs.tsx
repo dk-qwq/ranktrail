@@ -563,16 +563,16 @@ export function RuleDialog({ onClose }: { onClose: () => void }) {
         </li>
         <li>
           <strong>终榜。</strong>
-          5:00 或点「解封」后显示完整数据，队伍抽屉里才会出现未通过题目的错误提交次数。
+          比赛结束时显示终榜，也可以点「解封」查看当前回放时刻的榜单。
         </li>
       </ol>
 
       <div className="note warn">
         <Icon name="pulse" />
         <span>
-          <strong>数据边界：</strong>
-          导出文件里每题只有一条聚合结果（第几次提交通过、错了多少次），没有逐条提交记录。所以：通过时刻是精确的；
-          错误提交的时刻不知道，未通过的 <span className="formula">−n</span> 只在终榜显示。封榜期间"看得到提交、看不到结果"的中间态无法重建，这里做的是整榜冻结。
+          <strong>错误提交：</strong>
+          主榜用 <span className="formula">−n</span> 显示未通过题的错误次数，未揭题时显示在匿名列。逐条流水按提交时刻更新；
+          QOJ 若提供最后一次错误时刻，回放到该时刻才显示该题的错误总数。只有次数的记录在解封或终榜时显示。
         </span>
       </div>
 
