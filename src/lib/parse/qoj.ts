@@ -292,7 +292,12 @@ function buildTeams(dump: QojDump, layout: QojLayout, mode: TimeMode): {
           firstBlood: parsed.firstBlood,
         }
       } else {
-        cells[col.letter] = { letter: col.letter, ac: false, attempts: parsed.attempts }
+        cells[col.letter] = {
+          letter: col.letter,
+          ac: false,
+          attempts: parsed.attempts,
+          lastRejectSec: parsed.sec,
+        }
       }
     }
 

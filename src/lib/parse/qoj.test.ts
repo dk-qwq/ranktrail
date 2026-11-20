@@ -4,6 +4,15 @@ import { resolve } from 'node:path'
 import { runInNewContext } from 'node:vm'
 import { dumpFromText, parseQojDump, QOJ_SNIPPET, type QojDump } from './qoj'
 import { aggregateTeam } from '../model/aggregate'
+import { buildIndex, createContest } from '../model/contest'
+import { buildSnapshot } from '../model/snapshot'
+import { buildBoardColumns, projectBoardEntries } from '../model/board'
+import { DEFAULT_SETTINGS } from '../rules/settings'
+import { computeUnlocks } from '../rules/unlock'
+import type { Settings } from '../types'
+import { createElement } from 'react'
+import { renderToStaticMarkup } from 'react-dom/server'
+import { BoardTable } from '../../components/Board'
 
 /**
  * 取自 qoj.ac/results/ICPCCamp2026Day1 的两行真实数据：
@@ -119,6 +128,7 @@ describe('QOJ 榜单解析', () => {
     const f = parsed.teams[1].cells.F
     expect(f.ac).toBe(false)
     expect(f.attempts).toBe(15)
+    expect(f.lastRejectSec).toBe(299 * 60)
     expect(parsed.teams[1].cells.J).toBeUndefined()
   })
 
@@ -130,6 +140,103 @@ describe('QOJ 榜单解析', () => {
 
   it('标题去掉 "- QOJ.ac"', () => {
     expect(parsed.title).toBe('The 2026 China ICPC Training Camp. Day 1')
+  })
+})
+
+describe('QOJ 错误提交回放', () => {
+  const parsed = parseQojDump(dumpOf([
+    ['Rank.', 'Username', 'A', 'B', 'C', 'D', 'Solved', 'Penalty'],
+    ['1', '我的队伍', '+ 0:01', '+ 0:01', '-', '+ 0:01', '3', '3'],
+    ['2', '其他队伍', '+ 0:01', '-3 0:02', '-4', '-5 4:01', '1', '1'],
+  ]))
+  const index = buildIndex(createContest({
+    fileName: 'qoj-wa.json', sheetName: 'standings', source: 'qoj', parsed,
+  }))
+
+  function replay(t: number, overrides: Partial<Settings> = {}, manualReveal = false) {
+    const settings: Settings = {
+      ...DEFAULT_SETTINGS, selfTeamId: parsed.teams[0].id,
+      unlockCount: 50, unlockPercent: null, ...overrides,
+    }
+    const snapshot = buildSnapshot({
+      index, settings, plan: computeUnlocks(index, settings), t, manualReveal,
+    })
+    const row = snapshot.rows.find((r) => r.teamId === parsed.teams[1].id)!
+    return { snapshot, row, entries: projectBoardEntries(row, buildBoardColumns(snapshot)) }
+  }
+
+  it('其他队伍的 WA 在已知最后提交时刻出现，回退时重新隐藏', () => {
+    expect(replay(119).entries.some((entry) => entry?.kind === 'fail')).toBe(false)
+    const atWrong = replay(120)
+    expect(atWrong.row.isSelf).toBe(false)
+    expect(atWrong.entries.find((entry) => entry?.kind === 'fail'))
+      .toMatchObject({ attempts: 3, firstSec: Infinity, sec: 120 })
+    expect(atWrong.entries.every((entry) => !entry?.letter)).toBe(true)
+    expect(atWrong.row.cells[1].kind).toBe('locked')
+    const markup = renderToStaticMarkup(createElement(BoardTable, {
+      rows: [atWrong.row], snapshot: atWrong.snapshot, minutePrecision: true, onSelectTeam: vi.fn(),
+    }))
+    expect(markup).toContain('is-fail')
+    expect(markup).toContain('−3')
+    expect(atWrong.snapshot.problems[1]).toMatchObject({ submitted: 4, submittedPending: 0 })
+    expect(replay(119).entries.some((entry) => entry?.kind === 'fail')).toBe(false)
+    expect(replay(119).snapshot.problems[1]).toMatchObject({ submitted: 1, submittedPending: 3 })
+  })
+
+  it('揭题后 WA 对齐到题目列，仍保留错误次数和时间', () => {
+    const result = replay(120, { unlockCount: 1 })
+    expect(result.entries[1]).toMatchObject({ kind: 'fail', letter: 'B', attempts: 3, sec: 120 })
+    expect(result.row.cells[1]).toMatchObject({ kind: 'rejected', attempts: 3 })
+    expect(result.row.solved).toBe(1)
+    expect(result.row.penaltySec).toBe(60)
+  })
+
+  it('封榜保留此前 WA，封榜后的 WA 在解封或终榜后显示', () => {
+    const frozen = replay(242 * 60)
+    expect(frozen.entries[1]).toMatchObject({ kind: 'fail', letter: 'B', attempts: 3, sec: 120 })
+    expect(frozen.entries[3]).toBeUndefined()
+    expect(frozen.snapshot.problems[3]).toMatchObject({ submitted: 1, submittedPending: 5 })
+    for (const result of [replay(242 * 60, {}, true), replay(300 * 60)]) {
+      expect(result.entries[3]).toMatchObject({ kind: 'fail', letter: 'D', attempts: 5, sec: 241 * 60 })
+      expect(result.snapshot.problems[3]).toMatchObject({ submitted: 6, submittedPending: 0 })
+    }
+    expect(replay(240 * 60, {}, true).entries[3]).toBeUndefined()
+  })
+
+  it('无 WA 时刻的旧数据继续在终榜显示，并保留未知提交数', () => {
+    const live = replay(242 * 60)
+    expect(live.entries[2]).toBeUndefined()
+    expect(live.snapshot.problems[2]).toMatchObject({ submitted: 0, submittedPending: 4 })
+    const final = replay(300 * 60)
+    expect(final.entries[2]).toMatchObject({ kind: 'fail', letter: 'C', attempts: 4, firstSec: Infinity })
+    expect(final.entries[2]?.sec).toBeUndefined()
+    expect(final.snapshot.problems[2]).toMatchObject({ submitted: 4, submittedPending: 0 })
+  })
+
+  it('超过默认五小时的 WA 仍在比赛时长内并能进入终榜', () => {
+    const longParsed = parseQojDump(dumpOf([
+      ['Rank.', 'Username', 'A', 'B', 'Solved', 'Penalty'],
+      ['1', '我的队伍', '+ 0:01', '-', '1', '1'],
+      ['2', '其他队伍', '+ 0:02', '-3 6:15', '1', '2'],
+    ]))
+    const contest = createContest({
+      fileName: 'qoj-long-wa.json', sheetName: 'standings', source: 'qoj', parsed: longParsed,
+    })
+    const longIndex = buildIndex(contest)
+    const settings: Settings = {
+      ...DEFAULT_SETTINGS, selfTeamId: longParsed.teams[0].id,
+      durationMin: 300, freezeEnabled: false,
+    }
+    const plan = computeUnlocks(longIndex, settings)
+    expect(contest.suggestedDurationSec).toBe(375 * 60)
+    expect(plan.durationSec).toBe(375 * 60)
+    const snapshot = buildSnapshot({
+      index: longIndex, settings, plan, t: 375 * 60, manualReveal: false,
+    })
+    expect(snapshot.phase).toBe('final')
+    const other = snapshot.rows.find((row) => row.teamId === longParsed.teams[1].id)!
+    expect(projectBoardEntries(other, buildBoardColumns(snapshot))[1])
+      .toMatchObject({ kind: 'fail', letter: 'B', attempts: 3, sec: 375 * 60 })
   })
 })
 

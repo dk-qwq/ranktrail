@@ -21,6 +21,8 @@ export interface CellResult {
   attempts: number
   /** 通过时刻（秒，从比赛开始计时）；未通过时缺省 */
   acceptSec?: number
+  /** 未通过题的最后一次错误时刻（QOJ 聚合榜单可能提供），不代表每次错误的时刻 */
+  lastRejectSec?: number
   /** 是否首杀（仅 xcpclink 提供） */
   firstBlood?: boolean
   /** 逐条提交（只有 board.xcpcio 有）：用来按首次提交排序、让 −n 随时间长出来 */
@@ -206,9 +208,9 @@ export interface ProblemView {
   reason: 'threshold' | 'freeze' | 'never'
   /** 已通过队伍数（未解锁时 UI 默认不展示） */
   accepted: number
-  /** 截至目前已确认的提交数（未通过题目的错误提交没有时刻，解封后才计入） */
+  /** 截至目前已确认的提交数，聚合错误在最后一次错误时刻或解封后计入 */
   submitted: number
-  /** 还没法定位时刻的错误提交数（解封后并入 submitted 并清零） */
+  /** 尚不能确认已发生的聚合错误提交数 */
   submittedPending: number
   threshold: number | null
   /** 刚刚解锁（3 分钟内）：用于题卡点亮的动效 */

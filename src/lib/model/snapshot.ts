@@ -1,4 +1,4 @@
-import type { CellView, EntryView, Phase, ProblemView, RowView, Settings, Snapshot, SolveView } from '../types'
+import type { CellResult, CellView, EntryView, Phase, ProblemView, RowView, Settings, Snapshot, SolveView } from '../types'
 import type { ContestIndex } from './contest'
 import type { UnlockPlan } from '../rules/unlock'
 import { assignRanks, sortRanked, type RankEntry } from './rank'
@@ -27,6 +27,10 @@ function upperBound(sorted: number[], value: number): number {
 
 const EMPTY_CELL: CellView = { kind: 'empty', attempts: 0 }
 
+function aggregateWrongsVisible(cell: CellResult, t: number, revealed: boolean): boolean {
+  return !cell.ac && (cell.lastRejectSec != null ? cell.lastRejectSec <= t : revealed)
+}
+
 export function buildSnapshot(opts: SnapshotOptions): Snapshot {
   const { index, plan, settings } = opts
   const durationSec = plan.durationSec
@@ -46,7 +50,7 @@ export function buildSnapshot(opts: SnapshotOptions): Snapshot {
   const teams = index.virtualTeams.length ? [...roster, ...index.virtualTeams] : roster
 
   // 有逐条提交时只统计 dataT 之前的流水；聚合数据按已发生的 AC 计入 attempts。
-  // 没有时刻的最终错误次数只在解封 / 终榜后计入，其余挂在 submittedPending 上。
+  // 聚合错误到最后一次错误时刻才确认次数；没有时刻的在解封 / 终榜后计入。
   const submitted = plan.problems.map((p) => {
     let n = 0
     for (const team of roster) {
@@ -56,7 +60,7 @@ export function buildSnapshot(opts: SnapshotOptions): Snapshot {
         n += cell.submits.filter((s) => s.sec <= dataT).length
       } else if (cell.ac && cell.acceptSec != null) {
         if (cell.acceptSec <= dataT) n += cell.attempts
-      } else if (!cell.ac && revealed) {
+      } else if (aggregateWrongsVisible(cell, dataT, revealed)) {
         n += cell.attempts
       }
     }
@@ -64,11 +68,10 @@ export function buildSnapshot(opts: SnapshotOptions): Snapshot {
   })
 
   const submittedPending = plan.problems.map((p) => {
-    if (revealed) return 0
     let n = 0
     for (const team of roster) {
       const cell = team.cells[p.letter]
-      if (cell && !cell.ac && !cell.submits) n += cell.attempts
+      if (cell && !cell.ac && !cell.submits && !aggregateWrongsVisible(cell, dataT, revealed)) n += cell.attempts
     }
     return n
   })
@@ -158,7 +161,7 @@ export function buildSnapshot(opts: SnapshotOptions): Snapshot {
       if (cell?.submits) {
         const wrongs = cell.submits.filter((s) => s.sec <= tTeam && !s.ac).length
         if (wrongs > 0) return { kind: 'rejected', attempts: wrongs, lockedColumn: !columnUnlocked }
-      } else if (revealed && cell && !cell.ac && cell.attempts > 0) {
+      } else if (cell && cell.attempts > 0 && aggregateWrongsVisible(cell, tTeam, revealed)) {
         return { kind: 'rejected', attempts: cell.attempts, lockedColumn: !columnUnlocked }
       }
 
@@ -167,7 +170,7 @@ export function buildSnapshot(opts: SnapshotOptions): Snapshot {
 
     // 主榜格子：一队一题一格，按"第一次交这道题的时刻"排序。
     // 有逐条提交（board.xcpcio）时，未通过的 −n 会随错误次数长出来；
-    // 只有聚合数据（xlsx）时，未通过的题没有时刻，只有解封后才给出最终错误次数。
+    // 聚合错误在已知最后错误时刻后展示；无时刻时只有解封后给出最终错误次数。
     const rowEntries: EntryView[] = []
     for (const cell of Object.values(team.cells)) {
       const label = unlockedLetter.has(cell.letter) ? cell.letter : undefined
@@ -198,9 +201,9 @@ export function buildSnapshot(opts: SnapshotOptions): Snapshot {
           sec: wrong[wrong.length - 1].sec,
           letter: label,
         })
-      } else if (revealed && !cell.ac) {
-        // 没有时刻：解锁或设为自己的队伍都不能确定这些提交是否已经发生。
-        rowEntries.push({ kind: 'fail', attempts: cell.attempts, firstSec: Infinity, letter: label })
+      } else if (aggregateWrongsVisible(cell, tTeam, revealed)) {
+        // 首次提交时刻仍未知，聚合错误排在有逐条时刻的格子之后。
+        rowEntries.push({ kind: 'fail', attempts: cell.attempts, firstSec: Infinity, sec: cell.lastRejectSec, letter: label })
       }
     }
     const sortKey = (e: EntryView) => (Number.isFinite(e.firstSec) ? e.firstSec : Number.MAX_SAFE_INTEGER)

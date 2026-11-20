@@ -56,7 +56,7 @@ export function computeThreshold(n: number, s: Settings): ThresholdInfo {
 }
 
 export function computeUnlocks(index: ContestIndex, s: Settings): UnlockPlan {
-  const durationSec = Math.max(s.durationMin * 60, index.maxAcceptSec)
+  const durationSec = Math.max(s.durationMin * 60, index.maxAcceptSec, index.maxRejectSec)
   const freezeSec = s.freezeEnabled ? Math.min(Math.max(0, s.freezeStartMin) * 60, durationSec) : Infinity
   const freezeActive = Number.isFinite(freezeSec)
 

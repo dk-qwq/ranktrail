@@ -37,7 +37,7 @@ export function createContest(input: CreateContestInput): Contest {
 
   const acCount: Record<string, number> = {}
   const nameCount = new Map<string, number>()
-  let maxAcceptSec = 0
+  let maxResultSec = 0
   let solvedMismatch = 0
   let penaltyMismatch = 0
   let maxPenaltyDelta = 0
@@ -45,9 +45,9 @@ export function createContest(input: CreateContestInput): Contest {
   for (const team of parsed.teams) {
     nameCount.set(team.name, (nameCount.get(team.name) ?? 0) + 1)
     for (const cell of Object.values(team.cells)) {
+      maxResultSec = Math.max(maxResultSec, cell.acceptSec ?? 0, cell.lastRejectSec ?? 0)
       if (!cell.ac || cell.acceptSec == null) continue
       acCount[cell.letter] = (acCount[cell.letter] ?? 0) + 1
-      if (cell.acceptSec > maxAcceptSec) maxAcceptSec = cell.acceptSec
     }
     if (team.source.solved == null && team.source.penaltySec == null) continue
     const agg = aggregateTeam(team.cells, penaltyPerWrongSec)
@@ -99,7 +99,7 @@ export function createContest(input: CreateContestInput): Contest {
     diagnostics.push(warning('该工作表没有解析到任何队伍'))
   }
 
-  const suggestedDurationSec = Math.max(300 * 60, Math.ceil(maxAcceptSec / 60) * 60)
+  const suggestedDurationSec = Math.max(300 * 60, Math.ceil(maxResultSec / 60) * 60)
   const suggestedFreezeSec = Math.max(0, suggestedDurationSec - 3600)
 
   const title = parsed.title?.trim() || fileName.replace(/\.xlsx?$/i, '')
@@ -135,6 +135,7 @@ export interface ContestIndex {
   officialAcSecs: Record<string, number[]>
   totalAc: number
   maxAcceptSec: number
+  maxRejectSec: number
   firstBlood: Record<string, { teamId: string; teamName: string; sec: number } | undefined>
 }
 
@@ -153,10 +154,12 @@ export function buildIndex(contest: Contest): ContestIndex {
   const virtualTeams = contest.teams.filter((t) => t.virtual)
 
   let maxAcceptSec = 0
+  let maxRejectSec = 0
   let totalAc = 0
   for (const team of fieldTeams) {
     for (const letter of letters) {
       const cell = team.cells[letter]
+      if (cell?.lastRejectSec != null) maxRejectSec = Math.max(maxRejectSec, cell.lastRejectSec)
       if (!cell?.ac || cell.acceptSec == null) continue
       totalAc += 1
       acSecs[letter].push(cell.acceptSec)
@@ -186,6 +189,7 @@ export function buildIndex(contest: Contest): ContestIndex {
     officialAcSecs,
     totalAc,
     maxAcceptSec,
+    maxRejectSec,
     firstBlood,
   }
 }
